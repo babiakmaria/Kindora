@@ -33,13 +33,6 @@ const Sidebar = ({ activePage, onNavigate }) => (
       ))}
 
       <div
-        className={`sb-link${activePage === 'settings' ? ' active' : ''}`}
-        onClick={() => onNavigate('settings')}
-      >
-        Налаштування
-      </div>
-
-      <div
         className="sb-avatar"
         onClick={() => onNavigate('profile')}
         title="Перейти до мого профілю"

@@ -1,0 +1,191 @@
+/* ── Filters ─────────────────────────────────────────────────────────────── */
+.filtersRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 148px;
+  flex: 1;
+}
+
+.filterActions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+  padding-bottom: 1px;
+}
+
+/* ── Horizontal bar chart ────────────────────────────────────────────────── */
+.hBarChart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.hBarRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hBarLabel {
+  font-size: 12px;
+  color: #6B7280;
+  width: 78px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.hBarTrack {
+  flex: 1;
+  height: 10px;
+  background: #F3F4F6;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.hBarFill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+
+.hBarValue {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1A1A2E;
+  width: 18px;
+  text-align: right;
+}
+
+/* ── Line chart ──────────────────────────────────────────────────────────── */
+.lineChartWrap {
+  margin-top: 8px;
+}
+
+.lineSvg {
+  width: 100%;
+  height: 86px;
+  display: block;
+}
+
+.lineLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.lineLabels span {
+  font-size: 10px;
+  color: #9CA3AF;
+}
+
+/* ── Donut chart ─────────────────────────────────────────────────────────── */
+.donutWrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendPct {
+  margin-left: auto;
+  font-weight: 700;
+  color: #1A1A2E;
+  font-size: 12px;
+}
+
+/* ── Key metrics grid ────────────────────────────────────────────────────── */
+.insightGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.insightCard {
+  background: #F8F9FA;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border-left: 3px solid transparent;
+}
+
+.insightValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1A1A2E;
+  margin-bottom: 2px;
+}
+
+.insightLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1A1A2E;
+  margin-bottom: 2px;
+}
+
+.insightSub {
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+/* ── Detailed insights table ─────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9CA3AF;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.table td {
+  padding: 12px;
+  color: #6B7280;
+  border-bottom: 1px solid #E5E7EB;
+  vertical-align: middle;
+}
+
+.table tr:hover td { background: #F8F9FA; }
+.table tr:last-child td { border-bottom: none; }
+
+.tdName {
+  color: #1A1A2E !important;
+  font-weight: 600;
+}

@@ -38,13 +38,6 @@ const AdminSidebar = ({ activePage, onNavigate }) => (
 
     <div className={styles.right}>
       <div
-        className={`${styles.link} ${activePage === 'admin-settings' ? styles.active : ''}`}
-        onClick={() => onNavigate('admin-settings')}
-      >
-        Налаштування
-      </div>
-
-      <div
         className={styles.avatar}
         onClick={() => onNavigate('profile')}
         title="Перейти до мого профілю"

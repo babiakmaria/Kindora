@@ -1,0 +1,32 @@
+:root {
+  /* Pink palette */
+  --pk1: #FF6B9D;
+  --pk2: #FFB3CF;
+  --pk3: #FFF0F5;
+  --pk4: #FFD6E7;
+
+  /* Green palette */
+  --gr1: #4CAF7D;
+  --gr2: #A8D5B5;
+  --gr3: #EAF7F0;
+  --gr4: #C5E8D3;
+
+  /* Neutrals */
+  --neu: #F8F9FA;
+  --white: #ffffff;
+  --text1: #1A1A2E;
+  --text2: #6B7280;
+  --text3: #9CA3AF;
+  --border: #E5E7EB;
+  --bg: #F4F5F7;
+
+  /* Shadows */
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 8px 24px rgba(255, 107, 157, 0.1);
+
+  /* Radius */
+  --rad: 12px;
+  --radlg: 18px;
+  --radsm: 8px;
+  --radpill: 24px;
+}
