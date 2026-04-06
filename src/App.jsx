@@ -8,8 +8,10 @@ import UserDashboard    from './pages/UserDashboard';
 import ProjectsListPage from './pages/ProjectsListPage';
 import ProfilePage      from './pages/ProfilePage';
 import AdminDashboard   from './pages/AdminDashboard';
-import AnalyticsPage    from './pages/AnalyticsPage';
-import { PROJECTS }     from './data/data';
+import AnalyticsPage       from './pages/AnalyticsPage';
+import NotificationsPage   from './pages/NotificationsPage';
+import MyProjectsPage      from './pages/MyProjectsPage';
+import { PROJECTS }        from './data/data';
 
 // ── Page registry ─────────────────────────────────────────
 const PAGES = {
@@ -17,11 +19,12 @@ const PAGES = {
   login:             LoginPage,
   register:          RegisterPage,
   dashboard:         UserDashboard,
-  projects:          ProjectsListPage,
+  projects:          MyProjectsPage,
   explore:           ProjectsListPage,
   profile:           ProfilePage,
   admin:             AdminDashboard,
   'admin-analytics': AnalyticsPage,
+  notifications:     NotificationsPage,
 };
 
 function App() {

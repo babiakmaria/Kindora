@@ -58,7 +58,7 @@ const LandingPage = ({ onNavigate }) => (
         </p>
         <div className={styles.heroCtas}>
           <Button variant="primary" onClick={() => onNavigate('register')} style={{ fontSize: 15, padding: '13px 28px' }}>
-            Почати безкоштовно
+            Почати зараз
           </Button>
           <Button variant="ghost" onClick={() => onNavigate('explore')} style={{ fontSize: 15, padding: '13px 28px' }}>
             Переглянути проєкти →
@@ -84,7 +84,7 @@ const LandingPage = ({ onNavigate }) => (
       <h2 className={styles.ctaTitle}>Готові змінювати світ?</h2>
       <p className={styles.ctaSub}>Приєднайтесь до тисяч будівничих спільнот, які вже використовують Kindora.</p>
       <Button variant="primary" onClick={() => onNavigate('register')} style={{ fontSize: 15, padding: '14px 32px' }}>
-        Почати безкоштовно сьогодні
+        Почати сьогодні
       </Button>
     </section>
 
@@ -93,10 +93,7 @@ const LandingPage = ({ onNavigate }) => (
       <div className={styles.footerLogo}>
         Kindora
       </div>
-      <p style={{ fontSize: 12, color: '#9CA3AF' }}>© 2025 Kindora. Зроблено з турботою про спільноти.</p>
-      <div className={styles.footerLinks}>
-        <span>Конфіденційність</span><span>Умови</span><span>Контакти</span>
-      </div>
+      <p style={{ fontSize: 12, color: '#9CA3AF' }}>© 2026 Kindora. Зроблено з турботою про спільноти.</p>
     </footer>
   </div>
 );

@@ -1,0 +1,443 @@
+/* ── Stats row ── */
+.statsRow { margin-bottom: 20px; }
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.groupLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+.sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ── Filter pill ── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 13px;
+  border-radius: var(--radpill);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text2);
+  transition: all 0.15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.pill:hover { border-color: var(--pk1); color: var(--pk1); background: var(--pk3); }
+.pillActive { background: var(--pk3); border-color: var(--pk1); color: var(--pk1); font-weight: 700; }
+.pillDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Sort select ── */
+.sortSelect {
+  padding: 7px 12px;
+  border-radius: var(--radsm);
+  border: 1.5px solid var(--border);
+  font-size: 13px;
+  color: var(--text2);
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.sortSelect:focus { border-color: var(--pk1); }
+
+/* ── View toggle ── */
+.viewToggle {
+  display: flex;
+  gap: 2px;
+  background: var(--neu);
+  border-radius: var(--radsm);
+  padding: 3px;
+}
+.vtBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all 0.15s;
+  color: var(--text3);
+}
+.vtBtn:hover { color: var(--text1); }
+.vtActive {
+  background: #fff;
+  color: var(--text1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Results meta ── */
+.resultsMeta {
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+/* ── Grids ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Card base ── */
+.card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+.card:hover {
+  border-color: var(--pk2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 107, 157, 0.1);
+}
+.cardWarn { border-color: #F59E0B !important; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15) !important; }
+.cardWarn:hover { transform: none !important; }
+
+/* ── Grid card ── */
+.gridCard {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.cardBadges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.iconBox {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text1);
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+.desc {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 4px;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.metaItem {
+  font-size: 11px;
+  color: var(--text3);
+}
+.categoryTag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--neu);
+  color: var(--text3);
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+/* ── Member stack ── */
+.memberStack {
+  display: flex;
+  align-items: center;
+}
+.memberAva {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  margin-left: -5px;
+  flex-shrink: 0;
+}
+.memberAva:first-child { margin-left: 0; }
+.memberCount {
+  font-size: 11px;
+  color: var(--text3);
+  margin-left: 6px;
+}
+
+/* ── Role pill ── */
+.rolePill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.roleOwner {
+  background: #F0EDFF;
+  color: #6D28D9;
+}
+.roleContrib {
+  background: var(--gr3);
+  color: #2E7D52;
+}
+
+/* ── Action bar (grid card bottom) ── */
+.actionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+.lastUpdated {
+  font-size: 11px;
+  color: var(--text3);
+  font-weight: 500;
+}
+.actionBtns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.delIcon { color: var(--text3) !important; }
+.delIcon:hover { color: #EF4444 !important; border-color: #EF4444 !important; }
+
+/* ── Delete confirmation overlay (grid) ── */
+.confirmOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.97);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  border-radius: 16px;
+  gap: 8px;
+  backdrop-filter: blur(2px);
+}
+.confirmWarnIcon {
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+.confirmMsg {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text1);
+}
+.confirmSub {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  max-width: 220px;
+}
+.confirmBtns {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ── Danger button ── */
+.dangerBtn {
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1.5px solid #FECACA;
+}
+.dangerBtn:hover {
+  background: #DC2626;
+  color: #fff;
+  border-color: #DC2626;
+}
+
+/* ── List card ── */
+.listCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+}
+.listCard .iconBox { flex-shrink: 0; margin-top: 2px; }
+.listBody { flex: 1; min-width: 0; }
+.listTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
+}
+.listBadges { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.listDesc {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.55;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.listRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  min-width: 160px;
+}
+.listProgress { width: 160px; }
+.listActions { display: flex; align-items: center; gap: 4px; }
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.confirmText {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+/* ── Empty state ── */
+.empty {
+  text-align: center;
+  padding: 72px 24px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1.5px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.emptyIllo { margin-bottom: 20px; }
+.emptyIconBg {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--pk3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.emptyEmoji { font-size: 36px; }
+.emptyTitle {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text1);
+  margin-bottom: 8px;
+}
+.emptyDesc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+  max-width: 340px;
+  margin-bottom: 4px;
+}
+.emptyActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .toolbar { flex-direction: column; align-items: flex-start; }
+  .toolbarLeft { flex-direction: column; align-items: flex-start; }
+  .sep { display: none; }
+  .grid { grid-template-columns: 1fr; }
+  .listCard { flex-wrap: wrap; }
+  .listRight { min-width: 100%; flex-direction: row; }
+  .listProgress { flex: 1; }
+}
