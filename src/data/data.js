@@ -153,7 +153,6 @@ export const FEATURES = [
 
 // ── User sidebar nav ─────────────────────────────────────
 export const USER_NAV = [
-  { label: 'Дашборд',       path: 'dashboard' },
   { label: 'Мої проєкти',   path: 'projects' },
   { label: 'Огляд',         path: 'explore' },
   { label: 'Аналітика',     path: 'admin-analytics' },

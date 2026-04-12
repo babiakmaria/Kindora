@@ -4,8 +4,9 @@ import Topbar         from '../components/layout/Topbar';
 import Badge          from '../components/common/Badge';
 import ProgressBar    from '../components/common/ProgressBar';
 import NewProjectModal from '../components/projects/NewProjectModal';
-import { PROJECTS }   from '../data/data';
-import styles          from './MyProjectsPage.module.css';
+import { PROJECTS, USER_STATS } from '../data/data';
+import StatCard from '../components/common/StatCard';
+import styles   from './MyProjectsPage.module.css';
 
 // ── Extended metadata for demo projects ─────────────────────
 const MY_META = {
@@ -237,9 +238,7 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
 
   // ── Stats ──
   const totalCount     = myProjects.length;
-  const activeCount    = myProjects.filter((p) => p.status === 'active').length;
-  const completedCount = myProjects.filter((p) => p.status === 'completed').length;
-  const ownedCount     = myProjects.filter((p) => getMeta(p.id).role === 'owner').length;
+  const ownedCount = myProjects.filter((p) => getMeta(p.id).role === 'owner').length;
 
   // ── Filtered + sorted ──
   const filtered = useMemo(() => {
@@ -291,21 +290,9 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
           </div>
 
           {/* ── Stats row ── */}
-          <div className={`stat-row ${styles.statsRow}`}>
-            {[
-              { label: 'Всього проєктів', value: totalCount,     accent: '#FF6B9D' },
-              { label: 'Активні',         value: activeCount,    accent: '#4CAF7D' },
-              { label: 'Завершено',       value: completedCount, accent: '#9CA3AF' },
-              { label: 'Власних',         value: ownedCount,     accent: '#8B5CF6' },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="stat-card"
-                style={{ borderLeft: `3px solid ${s.accent}` }}
-              >
-                <div className="stat-label">{s.label}</div>
-                <div className="stat-num" style={{ color: s.accent, fontSize: 24 }}>{s.value}</div>
-              </div>
+          <div className="stat-row">
+            {USER_STATS.map((s) => (
+              <StatCard key={s.label} {...s} />
             ))}
           </div>
 

@@ -16,7 +16,7 @@ const LoginPage = ({ onNavigate }) => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      onNavigate('dashboard');
+      onNavigate('projects');
     }, 800);
   };
 

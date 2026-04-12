@@ -31,7 +31,7 @@ const RegisterPage = ({ onNavigate }) => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      onNavigate(form.role === 'admin' ? 'admin' : 'dashboard');
+      onNavigate(form.role === 'admin' ? 'admin' : 'projects');
     }, 800);
   };
 

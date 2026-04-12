@@ -4,7 +4,6 @@ import './styles/globals.css';
 import LandingPage         from './pages/LandingPage';
 import LoginPage           from './pages/LoginPage';
 import RegisterPage        from './pages/RegisterPage';
-import UserDashboard       from './pages/UserDashboard';
 import ProjectsListPage    from './pages/ProjectsListPage';
 import ProjectDetailPage   from './pages/ProjectDetailPage';
 import ProfilePage         from './pages/ProfilePage';
@@ -19,7 +18,6 @@ const PAGES = {
   landing:           LandingPage,
   login:             LoginPage,
   register:          RegisterPage,
-  dashboard:         UserDashboard,
   projects:          MyProjectsPage,
   explore:           ProjectsListPage,
   'project-detail':  ProjectDetailPage,
