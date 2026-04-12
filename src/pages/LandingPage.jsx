@@ -24,11 +24,11 @@ const HeroVisual = () => (
     <div className={styles.trendingSection}>
       <p className={styles.trendingLabel}>Популярні проєкти</p>
       {[
-        { abbr: 'CP', abbrBg: '#EAF7F0', title: 'Відновлення міського парку', meta: 'Довкілля · 47 учасників', badge: 'Відкритий', badgeCls: 'badge-green' },
-        { abbr: 'CL', abbrBg: '#FFF0F5', title: 'Громадська бібліотека',       meta: 'Освіта · 31 учасник',    badge: 'Новий',     badgeCls: 'badge-pink'  },
+        { abbr: '🌳', abbrBg: '#EAF7F0', title: 'Відновлення міського парку', meta: 'Довкілля · 47 учасників', badge: 'Відкритий', badgeCls: 'badge-green' },
+        { abbr: '📚', abbrBg: '#FFF0F5', title: 'Громадська бібліотека',       meta: 'Освіта · 31 учасник',    badge: 'Новий',     badgeCls: 'badge-pink'  },
       ].map((p) => (
         <div key={p.title} className={styles.trendingItem}>
-          <span className={styles.trendingIcon} style={{ background: p.abbrBg, fontSize: 11, fontWeight: 700, color: 'var(--text2)' }}>{p.abbr}</span>
+          <span className={styles.trendingIcon} style={{ background: p.abbrBg, fontSize: 20 }}>{p.abbr}</span>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{p.title}</p>
             <p style={{ fontSize: 11, color: 'var(--text3)' }}>{p.meta}</p>

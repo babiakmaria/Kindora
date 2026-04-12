@@ -4,8 +4,8 @@ import Button from '../common/Button';
 import styles from './NewProjectModal.module.css';
 
 const ICON_OPTIONS = [
-  'CP', 'CL', 'YK', 'RD', 'AT', 'NS', 'RB', 'CF',
-  'GD', 'SP', 'AR', 'ED', 'EN', 'CW', 'DA', 'BD',
+  '🌳', '📚', '🍳', '♻️', '✏️', '🏠', '🐝', '🎬',
+  '🌿', '⚡', '🎨', '📖', '🌍', '🤝', '📊', '🦋',
 ];
 
 const EMPTY_FORM = {
@@ -13,15 +13,15 @@ const EMPTY_FORM = {
   startDate: '',
   endDate: '',
   admin: 'Анна К.',
-  icon: 'GD',
+  icon: '🌿',
   iconBg: '#EAF7F0',
 };
 
 const ICON_BG_MAP = {
-  'CP': '#EAF7F0', 'CL': '#FFF0F5', 'YK': '#FFF8E1', 'RD': '#EAF7F0',
-  'AT': '#FFF0F5', 'NS': '#EAF7F0', 'RB': '#FFF0F5', 'CF': '#EAF7F0',
-  'GD': '#EAF7F0', 'SP': '#FFF8E1', 'AR': '#FFF0F5', 'ED': '#FFF8E1',
-  'EN': '#EAF7F0', 'CW': '#FFF0F5', 'DA': '#F0F4FF', 'BD': '#FFF8E1',
+  '🌳': '#EAF7F0', '📚': '#FFF0F5', '🍳': '#FFF8E1', '♻️': '#EAF7F0',
+  '✏️': '#FFF0F5', '🏠': '#EAF7F0', '🐝': '#FFF0F5', '🎬': '#EAF7F0',
+  '🌿': '#EAF7F0', '⚡': '#FFF8E1', '🎨': '#FFF0F5', '📖': '#FFF8E1',
+  '🌍': '#EAF7F0', '🤝': '#FFF0F5', '📊': '#F0F4FF', '🦋': '#FFF8E1',
 };
 
 const validate = (form) => {

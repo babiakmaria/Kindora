@@ -85,12 +85,7 @@ const LoginPage = ({ onNavigate }) => {
           </Button>
         </form>
 
-        <div className={styles.divider}>
-          <div className={styles.line} />
-          <span className={styles.dividerText}>або продовжити через</span>
-          <div className={styles.line} />
-        </div>
-        <button className={styles.socialBtn}>Продовжити через Google</button>
+
 
         <p className={styles.switchLink}>
           Немає акаунту?{' '}

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import Sidebar from '../components/layout/Sidebar';
+import Topbar  from '../components/layout/Topbar';
 import ProjectCard from '../components/projects/ProjectCard';
 import Button from '../components/common/Button';
 import NewProjectModal from '../components/projects/NewProjectModal';
@@ -94,47 +95,18 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
       <Sidebar activePage="explore" onNavigate={onNavigate} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+        <Topbar searchable onSearch={setQuery} onNavigate={onNavigate} />
 
-        {/* ── Search section ── */}
-        <div className={styles.searchSection}>
-          <p className={styles.searchLabel}>Знайдіть проєкт</p>
-
-          <div className={`${styles.searchBar} ${query ? styles.searchBarActive : ''}`}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-              style={{ opacity: 0.45, flexShrink: 0 }}>
-              <circle cx="9" cy="9" r="5.5" stroke="#1A1A2E" strokeWidth="1.5" />
-              <path d="M13.5 13.5L17 17" stroke="#1A1A2E" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <input
-              className={styles.searchInput}
-              type="text"
-              placeholder="Пошук за назвою, темою або ключовим словом…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Шукати проєкти"
-            />
-            {query && (
-              <button
-                className={styles.clearBtn}
-                onClick={() => setQuery('')}
-                aria-label="Очистити пошук"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 2l8 8M10 2L2 10" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </button>
-            )}
+        <div className="main-content">
+          <div className="page-header">
+            <div>
+              <div className="page-title">Огляд</div>
+              <div className="page-sub">Перегляньте всі проєкти спільноти</div>
+            </div>
+            <Button variant="primary" onClick={() => setModalOpen(true)}>
+              + Новий проєкт
+            </Button>
           </div>
-
-          <p className={styles.searchHint}>
-            {query
-              ? `Результати для "${query}"`
-              : 'Перегляньте всі проєкти спільноти або введіть текст для пошуку за назвою, категорією чи ключовим словом.'}
-          </p>
-        </div>
-
-        {/* ── Page body ── */}
-        <div className={styles.pageBody}>
 
           {/* Toolbar */}
           <div className={styles.toolbar}>
@@ -191,12 +163,6 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
                 </button>
               </div>
 
-              <Button variant="primary" sm onClick={() => setModalOpen(true)}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-                Новий проєкт
-              </Button>
             </div>
           </div>
 
