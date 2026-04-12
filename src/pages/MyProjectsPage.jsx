@@ -444,7 +444,7 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
                   project={p}
                   view={view}
                   onDelete={handleDelete}
-                  onOpen={() => {}}
+                  onOpen={() => onNavigate('project-detail', p)}
                 />
               ))}
             </div>

@@ -195,6 +195,7 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
                   project={p}
                   view={view}
                   onToggleJoin={toggleJoin}
+                  onNavigate={onNavigate}
                 />
               ))}
             </div>

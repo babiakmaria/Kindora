@@ -17,13 +17,18 @@ const MemberStack = ({ colors, total }) => (
   </div>
 );
 
-const ProjectCard = ({ project, view = 'grid', onToggleJoin }) => {
+const ProjectCard = ({ project, view = 'grid', onToggleJoin, onNavigate }) => {
   const isList = view === 'list';
   const { icon, iconBg, title, desc, status, statusLabel, members, memberColors, progress, due, joined } = project;
 
   const handleJoin = (e) => {
     e.stopPropagation();
     onToggleJoin && onToggleJoin(project.id);
+  };
+
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    onNavigate && onNavigate('project-detail', project);
   };
 
   if (isList) {
@@ -49,9 +54,15 @@ const ProjectCard = ({ project, view = 'grid', onToggleJoin }) => {
           <div style={{ width: 140 }}>
             <ProgressBar value={progress} status={status} />
           </div>
-          <Button variant={joined ? 'ghost' : 'outline'} sm onClick={handleJoin}>
-            {joined ? 'Відкрити проєкт' : 'Приєднатись'}
-          </Button>
+          {joined ? (
+            <Button variant="outline" sm onClick={handleOpen}>
+              Відкрити проєкт
+            </Button>
+          ) : (
+            <Button variant="outline" sm onClick={handleJoin}>
+              Приєднатись
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -78,14 +89,25 @@ const ProjectCard = ({ project, view = 'grid', onToggleJoin }) => {
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <Button
-          variant={joined ? 'outline' : 'primary'}
-          sm
-          onClick={handleJoin}
-          style={{ width: joined ? 'auto' : '100%', justifyContent: 'center' }}
-        >
-          {joined ? 'Відкрити проєкт' : 'Приєднатись'}
-        </Button>
+        {joined ? (
+          <Button
+            variant="outline"
+            sm
+            onClick={handleOpen}
+            style={{ width: '100%', justifyContent: 'center' }}
+          >
+            Відкрити проєкт
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            sm
+            onClick={handleJoin}
+            style={{ width: '100%', justifyContent: 'center' }}
+          >
+            Приєднатись
+          </Button>
+        )}
       </div>
     </div>
   );

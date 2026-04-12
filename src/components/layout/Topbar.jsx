@@ -33,10 +33,7 @@ const Topbar = ({
       )}
 
       <div className="topbar-right">
-        {!adminMode && (
-          <span className="badge badge-pink">Весна 2025</span>
-        )}
-        {adminMode && (
+{adminMode && (
           <>
             <button className="btn btn-ghost btn-sm">Експорт звіту</button>
             <button

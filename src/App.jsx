@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import './styles/globals.css';
 
-import LandingPage      from './pages/LandingPage';
-import LoginPage        from './pages/LoginPage';
-import RegisterPage     from './pages/RegisterPage';
-import UserDashboard    from './pages/UserDashboard';
-import ProjectsListPage from './pages/ProjectsListPage';
-import ProfilePage      from './pages/ProfilePage';
-import AdminDashboard   from './pages/AdminDashboard';
+import LandingPage         from './pages/LandingPage';
+import LoginPage           from './pages/LoginPage';
+import RegisterPage        from './pages/RegisterPage';
+import UserDashboard       from './pages/UserDashboard';
+import ProjectsListPage    from './pages/ProjectsListPage';
+import ProjectDetailPage   from './pages/ProjectDetailPage';
+import ProfilePage         from './pages/ProfilePage';
+import AdminDashboard      from './pages/AdminDashboard';
 import AnalyticsPage       from './pages/AnalyticsPage';
 import NotificationsPage   from './pages/NotificationsPage';
 import MyProjectsPage      from './pages/MyProjectsPage';
@@ -21,6 +22,7 @@ const PAGES = {
   dashboard:         UserDashboard,
   projects:          MyProjectsPage,
   explore:           ProjectsListPage,
+  'project-detail':  ProjectDetailPage,
   profile:           ProfilePage,
   admin:             AdminDashboard,
   'admin-analytics': AnalyticsPage,
@@ -28,12 +30,16 @@ const PAGES = {
 };
 
 function App() {
-  const [page, setPage] = useState('landing');
+  const [page,            setPage]           = useState('landing');
+  const [selectedProject, setSelectedProject] = useState(null);
 
   // ── Shared project state (lifted up so Dashboard + Explore stay in sync) ──
   const [projects, setProjects] = useState(PROJECTS);
 
-  const navigate = (target) => {
+  const navigate = (target, payload) => {
+    if (target === 'project-detail' && payload) {
+      setSelectedProject(payload);
+    }
     if (PAGES[target]) setPage(target);
   };
 
@@ -55,6 +61,7 @@ function App() {
       projects={projects}
       onAddProject={handleAddProject}
       onToggleJoin={handleToggleJoin}
+      project={selectedProject}
     />
   );
 }
