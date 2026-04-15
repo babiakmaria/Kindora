@@ -32,13 +32,18 @@ const ACTIVITY_LINE = [
   { month: 'Лют',    v: 57 },
   { month: 'Бер',    v: 89 },
 ];
-const SVG_W = 280;
-const SVG_H = 70;
+const SVG_W    = 560;
+const SVG_H    = 160;
+const PAD_T    = 12;  // top padding so the highest dot isn't clipped
+const PAD_B    = 12;  // bottom padding
+const DRAW_H   = SVG_H - PAD_T - PAD_B;
 const LINE_MAX = Math.max(...ACTIVITY_LINE.map((d) => d.v));
+const LINE_MIN = Math.min(...ACTIVITY_LINE.map((d) => d.v));
+const LINE_RNG = LINE_MAX - LINE_MIN || 1;
 
 const linePoints = ACTIVITY_LINE.map((d, i) => {
   const x = (i / (ACTIVITY_LINE.length - 1)) * SVG_W;
-  const y = (1 - d.v / LINE_MAX) * SVG_H;
+  const y = PAD_T + (1 - (d.v - LINE_MIN) / LINE_RNG) * DRAW_H;
   return `${x.toFixed(1)},${y.toFixed(1)}`;
 }).join(' ');
 
@@ -210,7 +215,7 @@ const AnalyticsPage = ({ onNavigate }) => {
                 <svg
                   viewBox={`0 0 ${SVG_W} ${SVG_H}`}
                   className={styles.lineSvg}
-                  preserveAspectRatio="none"
+                  preserveAspectRatio="xMidYMid meet"
                 >
                   <defs>
                     <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
@@ -245,7 +250,7 @@ const AnalyticsPage = ({ onNavigate }) => {
                   {/* Data dots */}
                   {ACTIVITY_LINE.map((d, i) => {
                     const x = (i / (ACTIVITY_LINE.length - 1)) * SVG_W;
-                    const y = (1 - d.v / LINE_MAX) * SVG_H;
+                    const y = PAD_T + (1 - (d.v - LINE_MIN) / LINE_RNG) * DRAW_H;
                     return (
                       <circle
                         key={i}

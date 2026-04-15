@@ -72,7 +72,7 @@
 
 .lineSvg {
   width: 100%;
-  height: 86px;
+  height: auto;
   display: block;
 }
 

@@ -127,7 +127,6 @@ export const USER_STATS = [
   { label: 'Приєднано проєктів', value: '7',   change: '↑ 2 цього місяця' },
   { label: 'Витрачено годин',    value: '84',  change: '↑ 12 цього тижня' },
   { label: 'Виконано завдань',   value: '43',  change: '↑ 5 сьогодні' },
-  { label: 'Рейтинг впливу',     value: '920', change: 'Топ 12%', highlight: true },
 ];
 
 export const ADMIN_STATS = [

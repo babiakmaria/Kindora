@@ -109,13 +109,6 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
               {isOwner && (
                 <>
                   <button
-                    className="btn btn-ghost btn-sm"
-                    title="Редагувати"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    ✎
-                  </button>
-                  <button
                     className={`btn btn-ghost btn-sm ${styles.delIcon}`}
                     title="Видалити"
                     onClick={triggerDelete}
@@ -191,13 +184,6 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
           </button>
           {isOwner && (
             <>
-              <button
-                className="btn btn-ghost btn-sm"
-                title="Редагувати"
-                onClick={(e) => e.stopPropagation()}
-              >
-                ✎
-              </button>
               <button
                 className={`btn btn-ghost btn-sm ${styles.delIcon}`}
                 title="Видалити"

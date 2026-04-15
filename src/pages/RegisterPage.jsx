@@ -44,7 +44,6 @@ const RegisterPage = ({ onNavigate }) => {
       <div className={styles.blob2} />
 
       <div className={styles.card} style={{ maxWidth: 460 }}>
-        <div className={styles.logoMark}>K</div>
         <h1 className={styles.title}>Створіть акаунт</h1>
         <p className={styles.sub}>Приєднуйтесь до спільноти та починайте діяти</p>
 

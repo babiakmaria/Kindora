@@ -217,7 +217,6 @@ const ProfilePage = ({ onNavigate }) => {
                   { num: '7',   lbl: 'Проєкти' },
                   { num: '84г', lbl: 'Годин внеску' },
                   { num: '43',  lbl: 'Завдань виконано' },
-                  { num: '920', lbl: 'Рейтинг впливу', highlight: true },
                 ].map((s) => (
                   <div key={s.lbl} className={styles.pstat}>
                     <div className={styles.pstatNum} style={s.highlight ? { color: 'var(--pk1)' } : {}}>{s.num}</div>

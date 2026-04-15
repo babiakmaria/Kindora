@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Sidebar from '../components/layout/Sidebar';
-import Topbar  from '../components/layout/Topbar';
 import styles  from './NotificationsPage.module.css';
 
 // ── Notification data ────────────────────────────────────────
@@ -149,8 +148,6 @@ const NotificationsPage = ({ onNavigate }) => {
       <Sidebar activePage="notifications" onNavigate={onNavigate} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-        <Topbar title="Сповіщення" onNavigate={onNavigate} />
-
         <div className="main-content">
 
           {/* Page header */}

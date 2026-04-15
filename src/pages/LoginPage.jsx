@@ -26,7 +26,6 @@ const LoginPage = ({ onNavigate }) => {
       <div className={styles.blob2} />
 
       <div className={styles.card}>
-        <div className={styles.logoMark}>K</div>
         <h1 className={styles.title}>З поверненням</h1>
         <p className={styles.sub}>Увійдіть до свого акаунту Kindora</p>
 
@@ -47,7 +46,10 @@ const LoginPage = ({ onNavigate }) => {
           <div className={styles.formGroup}>
             <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Пароль</span>
-              <span style={{ color: 'var(--pk1)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+              <span
+                style={{ color: 'var(--pk1)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+                onClick={() => onNavigate('forgot-password')}
+              >
                 Забули пароль?
               </span>
             </label>

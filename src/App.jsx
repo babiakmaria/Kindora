@@ -4,6 +4,8 @@ import './styles/globals.css';
 import LandingPage         from './pages/LandingPage';
 import LoginPage           from './pages/LoginPage';
 import RegisterPage        from './pages/RegisterPage';
+import ForgotPasswordPage  from './pages/ForgotPasswordPage';
+import ResetPasswordPage   from './pages/ResetPasswordPage';
 import ProjectsListPage    from './pages/ProjectsListPage';
 import ProjectDetailPage   from './pages/ProjectDetailPage';
 import ProfilePage         from './pages/ProfilePage';
@@ -15,10 +17,12 @@ import { PROJECTS }        from './data/data';
 
 // ── Page registry ─────────────────────────────────────────
 const PAGES = {
-  landing:           LandingPage,
-  login:             LoginPage,
-  register:          RegisterPage,
-  projects:          MyProjectsPage,
+  landing:            LandingPage,
+  login:              LoginPage,
+  register:           RegisterPage,
+  'forgot-password':  ForgotPasswordPage,
+  'reset-password':   ResetPasswordPage,
+  projects:           MyProjectsPage,
   explore:           ProjectsListPage,
   'project-detail':  ProjectDetailPage,
   profile:           ProfilePage,
@@ -30,6 +34,7 @@ const PAGES = {
 function App() {
   const [page,            setPage]           = useState('landing');
   const [selectedProject, setSelectedProject] = useState(null);
+  const [resetTokenStatus, setResetTokenStatus] = useState('valid');
 
   // ── Shared project state (lifted up so Dashboard + Explore stay in sync) ──
   const [projects, setProjects] = useState(PROJECTS);
@@ -37,6 +42,9 @@ function App() {
   const navigate = (target, payload) => {
     if (target === 'project-detail' && payload) {
       setSelectedProject(payload);
+    }
+    if (target === 'reset-password' && payload) {
+      setResetTokenStatus(payload); // payload: 'valid' | 'expired' | 'used' | 'invalid'
     }
     if (PAGES[target]) setPage(target);
   };
@@ -60,6 +68,7 @@ function App() {
       onAddProject={handleAddProject}
       onToggleJoin={handleToggleJoin}
       project={selectedProject}
+      tokenStatus={resetTokenStatus}
     />
   );
 }
