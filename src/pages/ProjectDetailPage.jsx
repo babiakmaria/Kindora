@@ -134,7 +134,7 @@ const getContributor = (id) => CONTRIBUTORS.find((c) => c.id === id);
 // Sub-components
 
 // Contributor avatar with tooltip
-const ContribAvatar = ({ contributor, size = 36 }) => {
+const ContribAvatar = ({ contributor, size = 36, onNavigate }) => {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -144,7 +144,18 @@ const ContribAvatar = ({ contributor, size = 36 }) => {
     >
       <div
         className={styles.contribAvatar}
-        style={{ background: contributor.color, width: size, height: size, fontSize: size * 0.36 }}
+        style={{
+          background: contributor.color,
+          width: size,
+          height: size,
+          fontSize: size * 0.36,
+          cursor: onNavigate ? 'pointer' : 'default',
+        }}
+        onClick={() => onNavigate && onNavigate('user-profile', contributor)}
+        role={onNavigate ? 'button' : undefined}
+        tabIndex={onNavigate ? 0 : undefined}
+        aria-label={onNavigate ? `Переглянути профіль ${contributor.name}` : undefined}
+        onKeyDown={(e) => { if (onNavigate && (e.key === 'Enter' || e.key === ' ')) onNavigate('user-profile', contributor); }}
       >
         {contributor.initials}
       </div>
@@ -152,6 +163,7 @@ const ContribAvatar = ({ contributor, size = 36 }) => {
         <div className={styles.tooltip}>
           <div className={styles.tooltipName}>{contributor.name}</div>
           <div className={styles.tooltipMeta}>{contributor.hours}г · {contributor.tasks} завдань</div>
+          {onNavigate && <div className={styles.tooltipHint}>Натисніть для перегляду профілю</div>}
         </div>
       )}
     </div>
@@ -441,7 +453,7 @@ const ProjectDetailPage = ({ onNavigate, project }) => {
               <div className={styles.contribLabel}>Учасники</div>
               <div className={styles.contribRow}>
                 {activeContribs.map((c) => (
-                  <ContribAvatar key={c.id} contributor={c} size={38} />
+                  <ContribAvatar key={c.id} contributor={c} size={38} onNavigate={onNavigate} />
                 ))}
                 <button
                   ref={addBtnRef}

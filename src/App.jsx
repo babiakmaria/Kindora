@@ -9,6 +9,7 @@ import ResetPasswordPage   from './pages/ResetPasswordPage';
 import ProjectsListPage    from './pages/ProjectsListPage';
 import ProjectDetailPage   from './pages/ProjectDetailPage';
 import ProfilePage         from './pages/ProfilePage';
+import UserProfilePage     from './pages/UserProfilePage';
 import AdminDashboard      from './pages/AdminDashboard';
 import AnalyticsPage       from './pages/AnalyticsPage';
 import NotificationsPage   from './pages/NotificationsPage';
@@ -26,6 +27,7 @@ const PAGES = {
   explore:           ProjectsListPage,
   'project-detail':  ProjectDetailPage,
   profile:           ProfilePage,
+  'user-profile':    UserProfilePage,
   admin:             AdminDashboard,
   'admin-analytics': AnalyticsPage,
   notifications:     NotificationsPage,
@@ -34,6 +36,7 @@ const PAGES = {
 function App() {
   const [page,            setPage]           = useState('landing');
   const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedUser,    setSelectedUser]    = useState(null);
   const [resetTokenStatus, setResetTokenStatus] = useState('valid');
 
   // ── Shared project state (lifted up so Dashboard + Explore stay in sync) ──
@@ -42,6 +45,9 @@ function App() {
   const navigate = (target, payload) => {
     if (target === 'project-detail' && payload) {
       setSelectedProject(payload);
+    }
+    if (target === 'user-profile' && payload) {
+      setSelectedUser(payload);
     }
     if (target === 'reset-password' && payload) {
       setResetTokenStatus(payload); // payload: 'valid' | 'expired' | 'used' | 'invalid'
@@ -68,6 +74,7 @@ function App() {
       onAddProject={handleAddProject}
       onToggleJoin={handleToggleJoin}
       project={selectedProject}
+      user={selectedUser}
       tokenStatus={resetTokenStatus}
     />
   );

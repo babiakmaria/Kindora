@@ -244,6 +244,13 @@
   color: #D1D5DB;
   margin-top: 2px;
 }
+.tooltipHint {
+  font-size: 10px;
+  color: #9CA3AF;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 4px;
+}
 
 .addContrib {
   width: 38px;
