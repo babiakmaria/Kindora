@@ -118,6 +118,74 @@
   white-space: nowrap;
 }
 
+.tagsRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: var(--pk3);
+  color: var(--pk1);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--pk4);
+}
+
+.tagRemove {
+  background: none;
+  border: none;
+  color: var(--pk1);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+}
+.tagRemove:hover { opacity: 1; }
+
+.tagAdd {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--pk2);
+  background: none;
+  color: var(--pk1);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.tagAdd:hover {
+  background: var(--pk3);
+  border-color: var(--pk1);
+}
+
+.tagInput {
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--pk1);
+  background: var(--pk3);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pk1);
+  outline: none;
+  width: 110px;
+  font-family: inherit;
+}
+
 /* Progress in header */
 .progressWrap {
   min-width: 200px;

@@ -303,7 +303,7 @@ const TodoItem = ({ todo, onToggle }) => {
 };
 
 // Main page
-const ProjectDetailPage = ({ onNavigate, project }) => {
+const ProjectDetailPage = ({ onNavigate, project, fromPage }) => {
   const proj = project ?? {
     icon: '🌳', iconBg: '#EAF7F0',
     title: 'Відновлення міського парку',
@@ -322,6 +322,26 @@ const ProjectDetailPage = ({ onNavigate, project }) => {
   const [draftTitle,      setDraftTitle]      = useState('');
   const [draftAssigneeId, setDraftAssigneeId] = useState(CONTRIBUTORS[0].id);
   const [draftPriority,   setDraftPriority]   = useState('medium');
+
+  // Tags state
+  const [tags,         setTags]         = useState(['Довкілля', 'Волонтерство']);
+  const [tagInput,     setTagInput]     = useState('');
+  const [addingTag,    setAddingTag]    = useState(false);
+  const tagInputRef = useRef(null);
+
+  const handleAddTag = () => {
+    const val = tagInput.trim();
+    if (val && !tags.includes(val)) setTags((prev) => [...prev, val]);
+    setTagInput('');
+    setAddingTag(false);
+  };
+
+  const handleTagKey = (e) => {
+    if (e.key === 'Enter') handleAddTag();
+    if (e.key === 'Escape') { setTagInput(''); setAddingTag(false); }
+  };
+
+  const removeTag = (tag) => setTags((prev) => prev.filter((t) => t !== tag));
 
   // Contributor popover state
   const [activeContribs,   setActiveContribs]   = useState(CONTRIBUTORS);
@@ -419,7 +439,7 @@ const ProjectDetailPage = ({ onNavigate, project }) => {
             <div className={styles.headerLeft}>
               <button
                 className={styles.backBtn}
-                onClick={() => onNavigate('projects')}
+                onClick={() => onNavigate(fromPage || 'projects')}
               >
                 ← Назад
               </button>
@@ -443,6 +463,32 @@ const ProjectDetailPage = ({ onNavigate, project }) => {
                     </button>
                   </div>
                   <div className={styles.projectDesc}>{proj.desc}</div>
+
+                  {/* tags row */}
+                  <div className={styles.tagsRow}>
+                    {tags.map((tag) => (
+                      <span key={tag} className={styles.tag}>
+                        {tag}
+                        <button className={styles.tagRemove} onClick={() => removeTag(tag)} title="Видалити тег">×</button>
+                      </span>
+                    ))}
+
+                    {addingTag ? (
+                      <input
+                        ref={tagInputRef}
+                        className={styles.tagInput}
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={handleTagKey}
+                        onBlur={handleAddTag}
+                        placeholder="Новий тег…"
+                        autoFocus
+                        maxLength={24}
+                      />
+                    ) : (
+                      <button className={styles.tagAdd} onClick={() => setAddingTag(true)} title="Додати тег">+</button>
+                    )}
+                  </div>
                 </div>
               </div>
 

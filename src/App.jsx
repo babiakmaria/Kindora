@@ -35,6 +35,7 @@ const PAGES = {
 
 function App() {
   const [page,            setPage]           = useState('landing');
+  const [previousPage,    setPreviousPage]    = useState('projects');
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedUser,    setSelectedUser]    = useState(null);
   const [resetTokenStatus, setResetTokenStatus] = useState('valid');
@@ -45,6 +46,7 @@ function App() {
   const navigate = (target, payload) => {
     if (target === 'project-detail' && payload) {
       setSelectedProject(payload);
+      setPreviousPage(page);
     }
     if (target === 'user-profile' && payload) {
       setSelectedUser(payload);
@@ -74,6 +76,7 @@ function App() {
       onAddProject={handleAddProject}
       onToggleJoin={handleToggleJoin}
       project={selectedProject}
+      fromPage={previousPage}
       user={selectedUser}
       tokenStatus={resetTokenStatus}
     />

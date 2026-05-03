@@ -33,7 +33,7 @@ const ProjectCard = ({ project, view = 'grid', onToggleJoin, onNavigate }) => {
 
   if (isList) {
     return (
-      <div className={`${styles.card} ${styles.listCard}`}>
+      <div className={`${styles.card} ${styles.listCard}`} onClick={handleOpen} style={{ cursor: 'pointer' }}>
         <div className={styles.iconBox} style={{ background: iconBg }}>{icon}</div>
 
         <div className={styles.body}>
@@ -69,7 +69,7 @@ const ProjectCard = ({ project, view = 'grid', onToggleJoin, onNavigate }) => {
   }
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} onClick={handleOpen} style={{ cursor: 'pointer' }}>
       <div className={styles.cardTop}>
         <div className={styles.iconBox} style={{ background: iconBg, marginBottom: 0 }}>{icon}</div>
         <Badge status={status} dot>{statusLabel}</Badge>

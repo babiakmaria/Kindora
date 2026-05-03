@@ -15,6 +15,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* remove focus ring after mouse click, keep it for keyboard nav */
+button:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
 /* ── Buttons ── */
 .btn {
   display: inline-flex;
@@ -158,9 +164,8 @@ body {
 }
 .sb-link:hover { background: var(--pk3); color: var(--pk1); }
 .sb-link.active {
-  background: var(--pk3);
+  background: none;
   color: var(--pk1);
-  font-weight: 700;
 }
 .sb-badge {
   background: var(--pk1);

@@ -103,17 +103,6 @@ const RegisterPage = ({ onNavigate }) => {
             </div>
           </div>
 
-          <div className={styles.checkRow}>
-            <input type="checkbox" id="terms" name="agreeTerms"
-              checked={form.agreeTerms} onChange={handleChange}
-              style={{ accentColor: 'var(--pk1)' }} required />
-            <label htmlFor="terms" style={{ fontSize: 12, color: 'var(--text2)' }}>
-              Я погоджуюсь з{' '}
-              <span style={{ color: 'var(--pk1)', cursor: 'pointer' }}>Умовами використання</span>{' '}
-              та{' '}
-              <span style={{ color: 'var(--pk1)', cursor: 'pointer' }}>Політикою конфіденційності</span>
-            </label>
-          </div>
 
           <Button type="submit" variant="primary"
             style={{ width: '100%', justifyContent: 'center', fontSize: 15, padding: 13, borderRadius: 12 }}>
