@@ -1,5 +1,6 @@
 @import './variables.css';
 
+
 *,
 *::before,
 *::after {
@@ -9,7 +10,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  font-family: 'Fixel Display', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text1);
   -webkit-font-smoothing: antialiased;
