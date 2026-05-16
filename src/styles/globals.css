@@ -183,6 +183,57 @@ button:focus:not(:focus-visible) {
   margin: 0 6px;
   flex-shrink: 0;
 }
+/* ── Sidebar search expand ── */
+.sb-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sb-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.sb-search-icon:hover,
+.sb-search--open .sb-search-icon {
+  background: var(--pk3);
+  color: var(--pk1);
+}
+.sb-search-form {
+  overflow: hidden;
+  width: 0;
+  transition: width 0.25s ease;
+}
+.sb-search--open .sb-search-form {
+  width: 200px;
+}
+.sb-search-input {
+  width: 200px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  font-size: 13px;
+  color: var(--text1);
+  background: var(--neu);
+  outline: none;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: border 0.2s;
+}
+.sb-search-input:focus {
+  border-color: var(--pk1);
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.12);
+}
+
 .sb-avatar {
   display: flex;
   align-items: center;
@@ -231,6 +282,56 @@ button:focus:not(:focus-visible) {
 .tn-link:hover { background: var(--pk3); color: var(--pk1); }
 .tn-link.active { background: var(--pk3); color: var(--pk1); font-weight: 700; }
 .topbar-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* ── Topbar search expand ── */
+.topbar-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.topbar-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.topbar-search-icon:hover,
+.topbar-search--open .topbar-search-icon {
+  background: var(--neu);
+  color: var(--pk1);
+}
+.topbar-search-form {
+  overflow: hidden;
+  width: 0;
+  transition: width 0.25s ease;
+}
+.topbar-search--open .topbar-search-form {
+  width: 220px;
+}
+.topbar-search-input {
+  width: 220px !important;
+  padding: 8px 14px !important;
+  border-radius: 24px !important;
+  background: var(--neu) !important;
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .topbar-search--open .topbar-search-form {
+    width: calc(100vw - 88px);
+  }
+  .topbar-search-input {
+    width: 100% !important;
+  }
+}
+
 .notif-btn {
   width: 36px; height: 36px;
   border-radius: 50%;

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import Sidebar        from '../components/layout/Sidebar';
-import Topbar         from '../components/layout/Topbar';
 import Badge          from '../components/common/Badge';
 import ProgressBar    from '../components/common/ProgressBar';
 import NewProjectModal from '../components/projects/NewProjectModal';
@@ -253,10 +252,9 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
 
   return (
     <div className="app-layout">
-      <Sidebar activePage="projects" onNavigate={onNavigate} />
+      <Sidebar activePage="projects" onNavigate={onNavigate} searchable onSearch={setQuery} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-        <Topbar searchable onSearch={setQuery} onNavigate={onNavigate} />
 
         <div className="main-content">
 
