@@ -47,7 +47,7 @@ const FilterPill = ({ item, active, onClick }) => {
 };
 
 // ─────────────────────────────────────────────────────────
-const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, onToggleJoin }) => {
+const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, onToggleJoin, currentUser, onLogout }) => {
   const [localProjects, setLocalProjects] = useState(PROJECTS);
   const projects    = projectsProp ?? localProjects;
   const toggleJoin  = onToggleJoin ?? ((id) =>
@@ -60,13 +60,7 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
   const [view,        setView]       = useState('grid');
   const [isModalOpen, setModalOpen]  = useState(false);
 
-  const handleAddProject = (newProject) => {
-    if (onAddProject) {
-      onAddProject(newProject);
-    } else {
-      setLocalProjects((prev) => [newProject, ...prev]);
-    }
-  };
+  // onAddProject from App.jsx handles the API call and shared state update
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -91,7 +85,7 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
 
   return (
     <div className="app-layout">
-      <Sidebar activePage="explore" onNavigate={onNavigate} searchable onSearch={setQuery} />
+      <Sidebar activePage="explore" onNavigate={onNavigate} searchable onSearch={setQuery} currentUser={currentUser} onLogout={onLogout} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
         <div className="main-content">
@@ -212,8 +206,8 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
       <NewProjectModal
         isOpen={isModalOpen}
         onClose={() => setModalOpen(false)}
-        onSubmit={handleAddProject}
-        currentUser="Анна К."
+        onSubmit={onAddProject}
+        currentUser={currentUser}
       />
     </div>
   );

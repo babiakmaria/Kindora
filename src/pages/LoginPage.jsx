@@ -1,23 +1,35 @@
 import React, { useState } from 'react';
 import Button from '../components/common/Button';
 import styles from './AuthPage.module.css';
+import { login } from '../api/auth';
 
-const LoginPage = ({ onNavigate }) => {
+const LoginPage = ({ onNavigate, onLogin }) => {
   const [form, setForm] = useState({ email: '', password: '', remember: false });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError('');
+    try {
+      const data = await login({ email: form.email, password: form.password });
+      if (!form.remember) {
+        // token is stored in localStorage by App; nothing extra needed
+      }
+      onLogin(data);
       onNavigate('projects');
-    }, 800);
+    } catch (err) {
+      setError(err.message || 'Невідома помилка. Спробуйте ще раз.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,6 +52,7 @@ const LoginPage = ({ onNavigate }) => {
               value={form.email}
               onChange={handleChange}
               required
+              autoComplete="email"
             />
           </div>
 
@@ -61,8 +74,16 @@ const LoginPage = ({ onNavigate }) => {
               value={form.password}
               onChange={handleChange}
               required
+              autoComplete="current-password"
+              style={error ? { borderColor: '#EF4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.1)' } : {}}
             />
           </div>
+
+          {error && (
+            <p style={{ fontSize: 13, color: '#EF4444', marginBottom: 12, fontWeight: 500 }}>
+              {error}
+            </p>
+          )}
 
           <div className={styles.checkRow}>
             <input
@@ -81,13 +102,12 @@ const LoginPage = ({ onNavigate }) => {
           <Button
             type="submit"
             variant="primary"
+            disabled={loading}
             style={{ width: '100%', justifyContent: 'center', fontSize: 15, padding: 13, borderRadius: 12 }}
           >
             {loading ? 'Вхід…' : 'Увійти'}
           </Button>
         </form>
-
-
 
         <p className={styles.switchLink}>
           Немає акаунту?{' '}

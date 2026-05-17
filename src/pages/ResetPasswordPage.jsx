@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from '../components/common/Button';
 import styles from './AuthPage.module.css';
+import { resetPassword } from '../api/auth';
 
 const STRENGTH_COLORS = ['#FF6B9D', '#FF6B9D', '#F59E0B', '#4CAF7D'];
 
@@ -16,14 +17,15 @@ const getStrength = (pw) => {
 
 const strengthLabels = ['', 'Слабкий', 'Середній — додайте символ', 'Надійний', 'Дуже надійний'];
 
-// tokenStatus can be 'valid', 'expired', 'used', or 'invalid'
-// in a real app this would come from the token in the URL
-const ResetPasswordPage = ({ onNavigate, tokenStatus = 'valid' }) => {
-  const [form,        setForm]        = useState({ password: '', confirm: '' });
-  const [errors,      setErrors]      = useState({});
-  const [step,        setStep]        = useState('form'); // form or success
-  const [loading,     setLoading]     = useState(false);
-  const [showPass,    setShowPass]    = useState(false);
+// tokenStatus: 'valid' | 'expired' | 'used' | 'invalid'
+// resetToken: the actual token string from the forgot-password flow
+const ResetPasswordPage = ({ onNavigate, tokenStatus = 'valid', resetToken }) => {
+  const [form,     setForm]     = useState({ password: '', confirm: '' });
+  const [errors,   setErrors]   = useState({});
+  const [apiError, setApiError] = useState('');
+  const [step,     setStep]     = useState('form'); // 'form' | 'success'
+  const [loading,  setLoading]  = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   const strength = getStrength(form.password);
 
@@ -150,12 +152,30 @@ const ResetPasswordPage = ({ onNavigate, tokenStatus = 'valid' }) => {
     return errs;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    setTimeout(() => { setLoading(false); setStep('success'); }, 900);
+    setApiError('');
+    try {
+      await resetPassword({ token: resetToken, password: form.password });
+      setStep('success');
+    } catch (err) {
+      // Map server error statuses to UI screens
+      const msg = err.message || '';
+      if (msg.includes('використано')) {
+        onNavigate('reset-password', 'used');
+      } else if (msg.includes('минув') || msg.includes('410')) {
+        onNavigate('reset-password', 'expired');
+      } else if (msg.includes('Недійсне') || msg.includes('недійсне')) {
+        onNavigate('reset-password', 'invalid');
+      } else {
+        setApiError(msg || 'Невідома помилка. Спробуйте ще раз.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -260,9 +280,16 @@ const ResetPasswordPage = ({ onNavigate, tokenStatus = 'valid' }) => {
             Пароль має містити: мін. 8 символів · велику літеру · цифру · спецсимвол
           </div>
 
+          {apiError && (
+            <p style={{ fontSize: 13, color: '#EF4444', marginBottom: 12, fontWeight: 500 }}>
+              {apiError}
+            </p>
+          )}
+
           <Button
             type="submit"
             variant="primary"
+            disabled={loading}
             style={fullBtn}
           >
             {loading ? 'Збереження…' : 'Зберегти новий пароль'}

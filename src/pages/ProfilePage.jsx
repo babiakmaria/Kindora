@@ -1,60 +1,89 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Sidebar from '../components/layout/Sidebar';
-import Topbar  from '../components/layout/Topbar';
-import Badge   from '../components/common/Badge';
-import Button  from '../components/common/Button';
-import styles  from './ProfilePage.module.css';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Sidebar  from '../components/layout/Sidebar';
+import Badge    from '../components/common/Badge';
+import Button   from '../components/common/Button';
+import styles   from './ProfilePage.module.css';
+import { updateProfile, fetchUserSkills, fetchUserProjects } from '../api/users';
 
-// ── Static data ──────────────────────────────────────────────
-const SKILLS = [
-  { name: 'Організація', pct: 88, color: '#FF6B9D' },
-  { name: 'Екологія',    pct: 75, color: '#4CAF7D' },
-  { name: 'Освіта',      pct: 60, color: '#F59E0B' },
-  { name: 'Спільнота',   pct: 92, color: '#FF6B9D' },
-];
+const BIO_MAX = 400;
 
 const MONTHS = ['Жовт', 'Листоп', 'Груд', 'Січ', 'Лют', 'Бер'];
 const BARS   = [40, 55, 70, 50, 80, 100];
 
-const HISTORY = [
-  { icon: '🌳', iconBg: '#EAF7F0', title: 'Відновлення міського парку',      meta: 'Січ 2025 → Тепер · 32г', status: 'active',    statusLabel: 'Активний'  },
-  { icon: '📚', iconBg: '#FFF0F5', title: 'Громадська бібліотека',            meta: 'Лют 2025 → Тепер · 18г', status: 'new',       statusLabel: 'Новий'     },
-  { icon: '♻️', iconBg: '#EAF7F0', title: 'Кампанія з переробки – Листоп',   meta: 'Листоп 2024 · 14г',       status: 'completed', statusLabel: 'Завершено' },
-];
-
-const INITIAL_PROFILE = {
-  name:    'Анна Коваленко',
-  city:    'Ужгород',
-  country: 'Україна',
-  bio:     'Захоплена організатор спільноти та захисник навколишнього середовища. Вірю, що малі дії творять великі зміни.',
+// ── Helpers ──────────────────────────────────────────────────
+const getInitials = (u) => {
+  if (!u) return '??';
+  const f = (u.first_name || '')[0] || '';
+  const l = (u.last_name  || '')[0] || '';
+  return (f + l).toUpperCase() || '??';
 };
 
-const BIO_MAX = 400;
+const getFullName = (u) => {
+  if (!u) return '';
+  return [u.first_name, u.last_name].filter(Boolean).join(' ');
+};
+
+const formatJoinDate = (dateStr) => {
+  if (!dateStr) return null;
+  try {
+    return new Date(dateStr).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+  } catch {
+    return null;
+  }
+};
 
 // ── Validation ───────────────────────────────────────────────
 const validate = (d) => {
   const e = {};
-  if (!d.name.trim())        e.name    = 'Ім\'я обов\'язкове.';
-  if (d.city.length    > 50) e.city    = 'Не більше 50 символів.';
-  if (d.country.length > 50) e.country = 'Не більше 50 символів.';
-  if (d.bio.length > BIO_MAX) e.bio    = `Не більше ${BIO_MAX} символів.`;
+  if (!d.first_name.trim()) e.first_name = 'Імʼя обовʼязкове.';
+  if (d.first_name.trim().length > 50) e.first_name = 'Не більше 50 символів.';
+  if (d.last_name.trim().length > 50)  e.last_name  = 'Не більше 50 символів.';
+  if (d.city.trim().length > 50)       e.city       = 'Не більше 50 символів.';
+  if (d.country.trim().length > 50)    e.country    = 'Не більше 50 символів.';
+  if (d.bio.length > BIO_MAX)          e.bio        = `Не більше ${BIO_MAX} символів.`;
   return e;
 };
 
 // ── Component ────────────────────────────────────────────────
-const ProfilePage = ({ onNavigate }) => {
-  const [profile,  setProfile]  = useState(INITIAL_PROFILE);
+const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
+  // Profile draft for the edit form — seeded from currentUser
+  const initDraft = useMemo(() => ({
+    first_name: currentUser?.first_name || '',
+    last_name:  currentUser?.last_name  || '',
+    city:       currentUser?.city       || '',
+    country:    currentUser?.country    || '',
+    bio:        currentUser?.bio        || '',
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [draft,    setDraft]    = useState(initDraft);
   const [editing,  setEditing]  = useState(false);
-  const [draft,    setDraft]    = useState(INITIAL_PROFILE);
   const [errors,   setErrors]   = useState({});
   const [saving,   setSaving]   = useState(false);
   const [feedback, setFeedback] = useState(null); // { type, msg }
 
-  const nameRef = useRef(null);
+  // Remote data
+  const [skills,       setSkills]       = useState([]);
+  const [userProjects, setUserProjects] = useState([]);
+  const [dataLoading,  setDataLoading]  = useState(true);
 
-  // Focus name input when entering edit mode
+  const firstNameRef = useRef(null);
+
+  // ── Fetch skills & projects for this user ──────────────────
   useEffect(() => {
-    if (editing) nameRef.current?.focus();
+    if (!currentUser?.id) return;
+    setDataLoading(true);
+    Promise.all([
+      fetchUserSkills(currentUser.id).catch(() => []),
+      fetchUserProjects(currentUser.id).catch(() => []),
+    ]).then(([sk, pr]) => {
+      setSkills(sk);
+      setUserProjects(pr);
+    }).finally(() => setDataLoading(false));
+  }, [currentUser?.id]);
+
+  // Focus first input when entering edit mode
+  useEffect(() => {
+    if (editing) firstNameRef.current?.focus();
   }, [editing]);
 
   // Escape key cancels editing
@@ -63,23 +92,49 @@ const ProfilePage = ({ onNavigate }) => {
     const onKey = (e) => { if (e.key === 'Escape') handleCancel(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editing]);
+  }, [editing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Derived display values (always from currentUser — never from URL/props ID)
+  const displayName = getFullName(currentUser) || 'Користувач';
+  const initials    = getInitials(currentUser);
+  const joinDate    = formatJoinDate(currentUser?.created_at);
+  const avatarColor = currentUser?.avatar_color || '#FF6B9D';
+
+  // Stats from user_stats view fields on currentUser
+  const totalProjects = (Number(currentUser?.active_projects_count) || 0)
+                      + (Number(currentUser?.finished_projects_count) || 0);
+  const totalHours    = Number(currentUser?.total_logged_hours) || 0;
+  const totalTasks    = Number(currentUser?.total_tasks)        || 0;
 
   const hasChanges =
-    draft.name    !== profile.name    ||
-    draft.city    !== profile.city    ||
-    draft.country !== profile.country ||
-    draft.bio     !== profile.bio;
+    draft.first_name !== (currentUser?.first_name || '') ||
+    draft.last_name  !== (currentUser?.last_name  || '') ||
+    draft.city       !== (currentUser?.city       || '') ||
+    draft.country    !== (currentUser?.country    || '') ||
+    draft.bio        !== (currentUser?.bio        || '');
 
+  // ── Handlers ──────────────────────────────────────────────
   const handleEdit = () => {
-    setDraft({ ...profile });
+    setDraft({
+      first_name: currentUser?.first_name || '',
+      last_name:  currentUser?.last_name  || '',
+      city:       currentUser?.city       || '',
+      country:    currentUser?.country    || '',
+      bio:        currentUser?.bio        || '',
+    });
     setErrors({});
     setFeedback(null);
     setEditing(true);
   };
 
   const handleCancel = () => {
-    setDraft({ ...profile });
+    setDraft({
+      first_name: currentUser?.first_name || '',
+      last_name:  currentUser?.last_name  || '',
+      city:       currentUser?.city       || '',
+      country:    currentUser?.country    || '',
+      bio:        currentUser?.bio        || '',
+    });
     setErrors({});
     setEditing(false);
   };
@@ -97,16 +152,23 @@ const ProfilePage = ({ onNavigate }) => {
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setSaving(true);
+    setFeedback(null);
     try {
-      // Simulate API call (replace with real fetch/axios)
-      await new Promise((res) => setTimeout(res, 900));
-      setProfile({ ...draft });
+      const updated = await updateProfile({
+        first_name: draft.first_name.trim(),
+        last_name:  draft.last_name.trim(),
+        city:       draft.city.trim()    || null,
+        country:    draft.country.trim() || null,
+        bio:        draft.bio.trim()     || null,
+      });
+      // Merge into App-level currentUser so Sidebar name updates too
+      if (onUserUpdate) onUserUpdate(updated);
       setEditing(false);
       setErrors({});
       setFeedback({ type: 'success', msg: 'Профіль успішно оновлено!' });
       setTimeout(() => setFeedback(null), 3500);
-    } catch {
-      setFeedback({ type: 'error', msg: 'Помилка збереження. Спробуйте ще раз.' });
+    } catch (err) {
+      setFeedback({ type: 'error', msg: err.message || 'Помилка збереження. Спробуйте ще раз.' });
     } finally {
       setSaving(false);
     }
@@ -114,13 +176,43 @@ const ProfilePage = ({ onNavigate }) => {
 
   const bioLeft = BIO_MAX - draft.bio.length;
 
+  // ── Skills display (API or fallback placeholder) ──────────
+  const SKILL_COLORS = ['#FF6B9D', '#4CAF7D', '#F59E0B', '#8B5CF6', '#06B6D4'];
+  const displaySkills = skills.length > 0
+    ? skills.slice(0, 6).map((s, i) => ({
+        name:  s.name || s.skill_name || 'Навичка',
+        pct:   s.level_pct ?? s.proficiency_pct ?? 70,
+        color: SKILL_COLORS[i % SKILL_COLORS.length],
+      }))
+    : [];
+
+  // ── Projects history display ───────────────────────────────
+  const STATUS_LABELS = {
+    new: 'Новий', active: 'Активний', in_progress: 'В процесі',
+    completed: 'Завершено', archived: 'Архів',
+  };
+  const displayProjects = userProjects.slice(0, 5).map((p) => ({
+    icon:        p.icon    || '🌿',
+    iconBg:      p.icon_bg || '#EAF7F0',
+    title:       p.title,
+    meta:        [
+      p.start_date ? new Date(p.start_date).toLocaleDateString('uk-UA', { month: 'short', year: 'numeric' }) : null,
+      p.end_date   ? new Date(p.end_date).toLocaleDateString('uk-UA', { month: 'short', year: 'numeric' }) : 'Тепер',
+    ].filter(Boolean).join(' → '),
+    status:      p.status || 'new',
+    statusLabel: STATUS_LABELS[p.status] || 'Новий',
+  }));
+
   return (
     <div className="app-layout">
-      <Sidebar activePage="profile" onNavigate={onNavigate} />
+      <Sidebar
+        activePage="profile"
+        onNavigate={onNavigate}
+        currentUser={currentUser}
+        onLogout={onLogout}
+      />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-        <Topbar searchable />
-
         <div className="main-content">
 
           {/* ── Feedback banner ── */}
@@ -133,24 +225,39 @@ const ProfilePage = ({ onNavigate }) => {
 
           {/* ── Hero ── */}
           <div className={styles.hero}>
-            <div className={styles.profileAvatar}>АК</div>
+            <div className={styles.profileAvatar} style={{ background: avatarColor }}>
+              {initials}
+            </div>
 
             <div className={styles.profileInfo}>
               {editing ? (
                 /* ── Edit mode ── */
                 <form onSubmit={handleSave} noValidate>
-                  {/* Name */}
-                  <div className={styles.editField}>
-                    <input
-                      ref={nameRef}
-                      name="name"
-                      className={`input ${styles.editInput} ${errors.name ? styles.inputError : ''}`}
-                      value={draft.name}
-                      onChange={handleChange}
-                      placeholder="Ім'я та прізвище"
-                      maxLength={80}
-                    />
-                    {errors.name && <span className={styles.fieldError}>{errors.name}</span>}
+                  {/* First + Last name */}
+                  <div className={styles.editRowTwo}>
+                    <div className={styles.editField}>
+                      <input
+                        ref={firstNameRef}
+                        name="first_name"
+                        className={`input ${styles.editInputSm} ${errors.first_name ? styles.inputError : ''}`}
+                        value={draft.first_name}
+                        onChange={handleChange}
+                        placeholder="Імʼя"
+                        maxLength={50}
+                      />
+                      {errors.first_name && <span className={styles.fieldError}>{errors.first_name}</span>}
+                    </div>
+                    <div className={styles.editField}>
+                      <input
+                        name="last_name"
+                        className={`input ${styles.editInputSm} ${errors.last_name ? styles.inputError : ''}`}
+                        value={draft.last_name}
+                        onChange={handleChange}
+                        placeholder="Прізвище"
+                        maxLength={50}
+                      />
+                      {errors.last_name && <span className={styles.fieldError}>{errors.last_name}</span>}
+                    </div>
                   </div>
 
                   {/* City + Country */}
@@ -180,7 +287,7 @@ const ProfilePage = ({ onNavigate }) => {
                   </div>
 
                   {/* Join date — static */}
-                  <p className={styles.joinDate}>Приєдналась у січні 2025</p>
+                  {joinDate && <p className={styles.joinDate}>Приєднався(-лась) у {joinDate}</p>}
 
                   {/* Bio */}
                   <div className={styles.editField}>
@@ -205,21 +312,24 @@ const ProfilePage = ({ onNavigate }) => {
               ) : (
                 /* ── View mode ── */
                 <>
-                  <h2>{profile.name}</h2>
-                  <p>{profile.city}, {profile.country} · Приєдналась у січні 2025</p>
-                  <p className={styles.bio}>{profile.bio}</p>
+                  <h2>{displayName}</h2>
+                  <p>
+                    {[currentUser?.city, currentUser?.country].filter(Boolean).join(', ')}
+                    {joinDate ? ` · Приєднався(-лась) у ${joinDate}` : ''}
+                  </p>
+                  {currentUser?.bio && <p className={styles.bio}>{currentUser.bio}</p>}
                 </>
               )}
 
               {/* Stats — always visible */}
               <div className={styles.statsRow}>
                 {[
-                  { num: '7',   lbl: 'Проєкти' },
-                  { num: '84г', lbl: 'Годин внеску' },
-                  { num: '43',  lbl: 'Завдань виконано' },
+                  { num: totalProjects,       lbl: 'Проєкти'         },
+                  { num: `${totalHours}г`,    lbl: 'Годин внеску'    },
+                  { num: totalTasks,          lbl: 'Завдань виконано' },
                 ].map((s) => (
                   <div key={s.lbl} className={styles.pstat}>
-                    <div className={styles.pstatNum} style={s.highlight ? { color: 'var(--pk1)' } : {}}>{s.num}</div>
+                    <div className={styles.pstatNum}>{s.num}</div>
                     <div className={styles.pstatLbl}>{s.lbl}</div>
                   </div>
                 ))}
@@ -256,23 +366,32 @@ const ProfilePage = ({ onNavigate }) => {
 
           {/* ── Cards grid ── */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
             {/* Skills */}
             <div className="section-card">
               <div className="section-head"><div className="section-title">Навички та внески</div></div>
-              <div className={styles.skillBars}>
-                {SKILLS.map((s) => (
-                  <div key={s.name} className={styles.skillRow}>
-                    <span className={styles.skillName}>{s.name}</span>
-                    <div className={styles.skillTrack}>
-                      <div className={styles.skillFill} style={{ width: `${s.pct}%`, background: s.color }} />
+              {dataLoading ? (
+                <p style={{ fontSize: 13, color: 'var(--text3)', padding: '8px 0' }}>Завантаження…</p>
+              ) : displaySkills.length > 0 ? (
+                <div className={styles.skillBars}>
+                  {displaySkills.map((s) => (
+                    <div key={s.name} className={styles.skillRow}>
+                      <span className={styles.skillName}>{s.name}</span>
+                      <div className={styles.skillTrack}>
+                        <div className={styles.skillFill} style={{ width: `${s.pct}%`, background: s.color }} />
+                      </div>
+                      <span className={styles.skillPct}>{s.pct}%</span>
                     </div>
-                    <span className={styles.skillPct}>{s.pct}%</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: 'var(--text3)', padding: '8px 0' }}>
+                  Навичок ще не додано.
+                </p>
+              )}
             </div>
 
-            {/* Monthly activity */}
+            {/* Monthly activity — kept as decorative until activity API is wired */}
             <div className="section-card">
               <div className="section-head"><div className="section-title">Місячна активність</div></div>
               <div className={styles.chartRow}>
@@ -289,12 +408,12 @@ const ProfilePage = ({ onNavigate }) => {
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
                 <div className={styles.miniStat} style={{ background: 'var(--pk3)' }}>
-                  <div style={{ color: 'var(--pk1)', fontWeight: 800, fontSize: 16 }}>28г</div>
-                  <div style={{ fontSize: 10, color: 'var(--text3)' }}>Цього місяця</div>
+                  <div style={{ color: 'var(--pk1)', fontWeight: 800, fontSize: 16 }}>{totalHours}г</div>
+                  <div style={{ fontSize: 10, color: 'var(--text3)' }}>Всього годин</div>
                 </div>
                 <div className={styles.miniStat} style={{ background: 'var(--gr3)' }}>
-                  <div style={{ color: 'var(--gr1)', fontWeight: 800, fontSize: 16 }}>+23%</div>
-                  <div style={{ fontSize: 10, color: 'var(--text3)' }}>до минулого місяця</div>
+                  <div style={{ color: 'var(--gr1)', fontWeight: 800, fontSize: 16 }}>{totalProjects}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text3)' }}>Проєктів</div>
                 </div>
               </div>
             </div>
@@ -302,21 +421,35 @@ const ProfilePage = ({ onNavigate }) => {
             {/* Participation history */}
             <div className="section-card" style={{ gridColumn: '1 / -1' }}>
               <div className="section-head"><div className="section-title">Історія участі</div></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {HISTORY.map((h) => (
-                  <div key={h.title} className={styles.historyItem}>
-                    <span style={{ fontSize: 20, background: h.iconBg, width: 36, height: 36, borderRadius: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{h.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{h.title}</p>
-                      <p style={{ fontSize: 11, color: 'var(--text3)' }}>{h.meta}</p>
+              {dataLoading ? (
+                <p style={{ fontSize: 13, color: 'var(--text3)', padding: '8px 0' }}>Завантаження…</p>
+              ) : displayProjects.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {displayProjects.map((h, i) => (
+                    <div key={i} className={styles.historyItem}>
+                      <span style={{
+                        fontSize: 20, background: h.iconBg, width: 36, height: 36,
+                        borderRadius: 8, display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', flexShrink: 0,
+                      }}>
+                        {h.icon}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{h.title}</p>
+                        <p style={{ fontSize: 11, color: 'var(--text3)' }}>{h.meta}</p>
+                      </div>
+                      <Badge status={h.status} dot>{h.statusLabel}</Badge>
                     </div>
-                    <Badge status={h.status} dot>{h.statusLabel}</Badge>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: 'var(--text3)', padding: '8px 0' }}>
+                  Ви ще не брали участі в жодному проєкті.
+                </p>
+              )}
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
     </div>

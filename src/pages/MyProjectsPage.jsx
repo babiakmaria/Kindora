@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Sidebar        from '../components/layout/Sidebar';
 import Badge          from '../components/common/Badge';
 import ProgressBar    from '../components/common/ProgressBar';
@@ -80,7 +80,7 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
           </div>
           <p className={styles.listDesc}>{project.desc}</p>
           <div className={styles.metaRow}>
-            <span className={styles.metaItem}>📅 {project.due}</span>
+            <span className={styles.metaItem}>{project.due}</span>
             <MemberStack colors={project.memberColors} total={project.members} />
             <span className={styles.categoryTag}>{project.category}</span>
           </div>
@@ -165,7 +165,7 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
       {/* Footer */}
       <div className={styles.footer}>
         <div className={styles.metaRow}>
-          <span className={styles.metaItem}>📅 {project.due}</span>
+          <span className={styles.metaItem}>{project.due}</span>
           <MemberStack colors={project.memberColors} total={project.members} />
         </div>
         <span className={styles.categoryTag}>{project.category}</span>
@@ -173,7 +173,7 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
 
       {/* Action bar */}
       <div className={styles.actionBar}>
-        <span className={styles.lastUpdated}>🕐 {meta.lastUpdated}</span>
+        <span className={styles.lastUpdated}>{meta.lastUpdated}</span>
         <div className={styles.actionBtns}>
           <button
             className={`btn btn-outline btn-sm`}
@@ -199,10 +199,14 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
 };
 
 // ── Page ────────────────────────────────────────────────────
-const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) => {
-  // Initialise from joined projects; manage locally so delete works without App changes
-  const [myProjects, setMyProjects] = useState(() =>
-    (projectsProp ?? PROJECTS).filter((p) => p.joined)
+const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, currentUser, onLogout }) => {
+  // Track IDs removed locally (delete button) without touching shared state
+  const [deletedIds, setDeletedIds] = useState(new Set());
+
+  // Derive joined projects from shared prop so new additions are reflected immediately
+  const myProjects = useMemo(
+    () => (projectsProp ?? PROJECTS).filter((p) => p.joined && !deletedIds.has(p.id)),
+    [projectsProp, deletedIds],
   );
 
   const [query,        setQuery]       = useState('');
@@ -212,14 +216,8 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
   const [view,         setView]        = useState('grid');
   const [modalOpen,    setModalOpen]   = useState(false);
 
-  const handleAdd = (newProject) => {
-    const enriched = { ...newProject, joined: true };
-    setMyProjects((prev) => [enriched, ...prev]);
-    onAddProject && onAddProject(enriched);
-  };
-
   const handleDelete = (id) =>
-    setMyProjects((prev) => prev.filter((p) => p.id !== id));
+    setDeletedIds((prev) => new Set([...prev, id]));
 
   // ── Stats ──
   const totalCount     = myProjects.length;
@@ -252,7 +250,7 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
 
   return (
     <div className="app-layout">
-      <Sidebar activePage="projects" onNavigate={onNavigate} searchable onSearch={setQuery} />
+      <Sidebar activePage="projects" onNavigate={onNavigate} searchable onSearch={setQuery} currentUser={currentUser} onLogout={onLogout} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
 
@@ -369,11 +367,6 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
           {!hasProjects ? (
             /* True empty state */
             <div className={styles.empty}>
-              <div className={styles.emptyIllo}>
-                <div className={styles.emptyIconBg}>
-                  <span className={styles.emptyEmoji}>📂</span>
-                </div>
-              </div>
               <div className={styles.emptyTitle}>У вас ще немає проєктів</div>
               <div className={styles.emptyDesc}>
                 Створіть свій перший проєкт або приєднайтесь до наявного через «Огляд».
@@ -390,11 +383,6 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
           ) : !hasResults ? (
             /* Filter empty state */
             <div className={styles.empty}>
-              <div className={styles.emptyIllo}>
-                <div className={styles.emptyIconBg}>
-                  <span className={styles.emptyEmoji}>🔍</span>
-                </div>
-              </div>
               <div className={styles.emptyTitle}>Нічого не знайдено</div>
               <div className={styles.emptyDesc}>
                 Спробуйте змінити фільтри або пошуковий запит.
@@ -427,7 +415,8 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject }) =>
       <NewProjectModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSubmit={handleAdd}
+        onSubmit={onAddProject}
+        currentUser={currentUser}
       />
     </div>
   );

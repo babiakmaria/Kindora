@@ -32,7 +32,7 @@ const ProgressCell = ({ pct, color }) => (
   </div>
 );
 
-const AdminDashboard = ({ onNavigate, projects: projectsProp, onAddProject }) => {
+const AdminDashboard = ({ onNavigate, projects: projectsProp, onAddProject, currentUser, onLogout }) => {
   const [tableProjects, setTableProjects] = useState(
     projectsProp ? projectsProp.slice(0, 4) : PROJECTS.slice(0, 4)
   );
@@ -50,7 +50,7 @@ const AdminDashboard = ({ onNavigate, projects: projectsProp, onAddProject }) =>
 
   return (
     <div className="app-layout">
-      <AdminSidebar activePage="admin" onNavigate={onNavigate} />
+      <AdminSidebar activePage="admin" onNavigate={onNavigate} currentUser={currentUser} onLogout={onLogout} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
         <Topbar

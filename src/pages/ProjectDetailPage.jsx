@@ -303,7 +303,7 @@ const TodoItem = ({ todo, onToggle }) => {
 };
 
 // Main page
-const ProjectDetailPage = ({ onNavigate, project, fromPage }) => {
+const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogout }) => {
   const proj = project ?? {
     icon: '🌳', iconBg: '#EAF7F0',
     title: 'Відновлення міського парку',
@@ -429,7 +429,7 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage }) => {
 
   return (
     <div className="app-layout">
-      <Sidebar activePage="projects" onNavigate={onNavigate} />
+      <Sidebar activePage="projects" onNavigate={onNavigate} currentUser={currentUser} onLogout={onLogout} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className={styles.pageBody}>

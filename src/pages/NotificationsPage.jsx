@@ -130,7 +130,7 @@ const NotifItem = ({ notif, onMarkRead, onViewProject }) => {
 };
 
 // ── Page ─────────────────────────────────────────────────────
-const NotificationsPage = ({ onNavigate }) => {
+const NotificationsPage = ({ onNavigate, currentUser, onLogout }) => {
   const [notifs, setNotifs] = useState(INITIAL_NOTIFS);
   const [tab,    setTab]    = useState('all');
 
@@ -145,7 +145,7 @@ const NotificationsPage = ({ onNavigate }) => {
 
   return (
     <div className="app-layout">
-      <Sidebar activePage="notifications" onNavigate={onNavigate} />
+      <Sidebar activePage="notifications" onNavigate={onNavigate} searchable currentUser={currentUser} onLogout={onLogout} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
         <div className="main-content">

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Sidebar from '../components/layout/Sidebar';
-import Topbar from '../components/layout/Topbar';
 import StatCard from '../components/common/StatCard';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
@@ -82,7 +81,7 @@ const ProgressCell = ({ pct, color }) => (
   </div>
 );
 
-const AnalyticsPage = ({ onNavigate }) => {
+const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo,   setDateTo]   = useState('');
   const [projType, setProjType] = useState('Всі типи');
@@ -105,14 +104,9 @@ const AnalyticsPage = ({ onNavigate }) => {
 
   return (
     <div className="app-layout">
-      <Sidebar activePage="admin-analytics" onNavigate={onNavigate} />
+      <Sidebar activePage="admin-analytics" onNavigate={onNavigate} searchable currentUser={currentUser} onLogout={onLogout} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-        <Topbar
-          searchable
-          onNavigate={onNavigate}
-        />
-
         <div className="main-content">
 
           {/* Page header */}

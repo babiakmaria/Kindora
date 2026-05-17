@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Avatar from '../common/Avatar';
 import { USER_NAV, USER_NAV_BOTTOM } from '../../data/data';
 
@@ -9,7 +9,34 @@ const SearchIcon = () => (
   </svg>
 );
 
-const Sidebar = ({ activePage, onNavigate, searchable = false, onSearch }) => {
+const LogoutIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+    <polyline points="16 17 21 12 16 7"/>
+    <line x1="21" y1="12" x2="9" y2="12"/>
+  </svg>
+);
+
+const getInitials = (user) => {
+  if (!user) return 'КД';
+  const first = (user.first_name || '')[0] || '';
+  const last  = (user.last_name  || '')[0] || '';
+  return (first + last).toUpperCase() || 'КД';
+};
+
+const getDisplayName = (user) => {
+  if (!user) return 'Користувач';
+  const first = user.first_name || '';
+  const last  = (user.last_name  || '')[0] ? `${user.last_name[0]}.` : '';
+  return [first, last].filter(Boolean).join(' ');
+};
+
+const getRoleLabel = (user) => {
+  if (!user) return '';
+  return user.system_role === 'admin' ? 'Адміністратор' : 'Учасник';
+};
+
+const Sidebar = ({ activePage, onNavigate, searchable = false, onSearch, currentUser, onLogout }) => {
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const inputRef = useRef(null);
@@ -112,12 +139,24 @@ const Sidebar = ({ activePage, onNavigate, searchable = false, onSearch }) => {
           onClick={() => onNavigate('profile')}
           title="Перейти до мого профілю"
         >
-          <Avatar initials="АК" />
+          <Avatar initials={getInitials(currentUser)} />
           <div className="avatar-info">
-            <p>Анна К.</p>
-            <span>Учасник</span>
+            <p>{getDisplayName(currentUser)}</p>
+            <span>{getRoleLabel(currentUser)}</span>
           </div>
         </div>
+
+        {onLogout && (
+          <div
+            className="sb-link"
+            onClick={onLogout}
+            title="Вийти з акаунту"
+            style={{ color: 'var(--text3)', marginTop: 2 }}
+          >
+            <LogoutIcon />
+            <span style={{ marginLeft: 6 }}>Вийти</span>
+          </div>
+        )}
       </div>
     </div>
   );

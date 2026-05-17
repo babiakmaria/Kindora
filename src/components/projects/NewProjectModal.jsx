@@ -1,21 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import styles from './NewProjectModal.module.css';
+import { fetchCategories } from '../../api/projects';
 
 const ICON_OPTIONS = [
   '🌳', '📚', '🍳', '♻️', '✏️', '🏠', '🐝', '🎬',
   '🌿', '⚡', '🎨', '📖', '🌍', '🤝', '📊', '🦋',
 ];
-
-const EMPTY_FORM = {
-  title: '',
-  startDate: '',
-  endDate: '',
-  admin: 'Анна К.',
-  icon: '🌿',
-  iconBg: '#EAF7F0',
-};
 
 const ICON_BG_MAP = {
   '🌳': '#EAF7F0', '📚': '#FFF0F5', '🍳': '#FFF8E1', '♻️': '#EAF7F0',
@@ -24,39 +16,73 @@ const ICON_BG_MAP = {
   '🌍': '#EAF7F0', '🤝': '#FFF0F5', '📊': '#F0F4FF', '🦋': '#FFF8E1',
 };
 
+const EMPTY_FORM = {
+  title:       '',
+  description: '',
+  startDate:   '',
+  endDate:     '',
+  icon:        '🌿',
+  iconBg:      '#EAF7F0',
+  categoryId:  '',
+};
+
 const validate = (form) => {
   const errors = {};
   if (!form.title.trim()) {
-    errors.title = 'Назва проєкту обов`язкова.';
+    errors.title = 'Назва проєкту обовʼязкова.';
   } else if (form.title.trim().length < 3) {
     errors.title = 'Назва проєкту має містити щонайменше 3 символи.';
   }
   if (!form.startDate) {
-    errors.startDate = 'Дата початку обов`язкова.';
+    errors.startDate = 'Дата початку обовʼязкова.';
   }
   if (form.endDate && form.startDate && form.endDate < form.startDate) {
     errors.endDate = 'Дата завершення має бути після дати початку.';
   }
+  if (!form.categoryId) {
+    errors.categoryId = 'Оберіть категорію.';
+  }
   return errors;
 };
 
-const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser = 'Анна К.' }) => {
-  const [form, setForm]     = useState({ ...EMPTY_FORM, admin: currentUser });
-  const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+// currentUser: the logged-in user object from App state
+const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser }) => {
+  const [form,       setForm]       = useState({ ...EMPTY_FORM });
+  const [errors,     setErrors]     = useState({});
+  const [submitted,  setSubmitted]  = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [apiError,   setApiError]   = useState('');
+  const [categories, setCategories] = useState([]);
+
+  // Load categories when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, [isOpen]);
+
+  const displayName = currentUser
+    ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim()
+    : 'Ви';
+
+  const initials = currentUser
+    ? `${(currentUser.first_name || '')[0] || ''}${(currentUser.last_name || '')[0] || ''}`.toUpperCase()
+    : '?';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...form, [name]: value };
     setForm(updated);
     if (submitted) setErrors(validate(updated));
+    setApiError('');
   };
 
-  const handleIconSelect = (abbr) => {
-    setForm((prev) => ({ ...prev, icon: abbr, iconBg: ICON_BG_MAP[abbr] || '#EAF7F0' }));
+  const handleIconSelect = (icon) => {
+    setForm((prev) => ({ ...prev, icon, iconBg: ICON_BG_MAP[icon] || '#EAF7F0' }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
     const validationErrors = validate(form);
@@ -65,39 +91,32 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser = 'Анна К
       return;
     }
 
-    const newProject = {
-      id: Date.now(),
-      icon: form.icon,
-      iconBg: form.iconBg,
-      title: form.title.trim(),
-      desc: `Керується ${form.admin}. Розпочато ${form.startDate}.`,
-      status: 'new',
-      statusLabel: 'Новий',
-      category: 'Загальне',
-      members: 1,
-      memberColors: ['#FF6B9D'],
-      progress: 0,
-      due: form.endDate
-        ? new Date(form.endDate).toLocaleDateString('uk-UA', { month: 'short', day: 'numeric' })
-        : 'TBD',
-      joined: true,
-      startDate: form.startDate,
-      endDate: form.endDate || null,
-      admin: form.admin,
-    };
-
-    onSubmit(newProject);
-
-    setForm({ ...EMPTY_FORM, admin: currentUser });
-    setErrors({});
-    setSubmitted(false);
-    onClose();
+    setSaving(true);
+    setApiError('');
+    try {
+      // Pass raw API-shaped data; App.jsx calls the API and maps the response
+      await onSubmit({
+        title:       form.title.trim(),
+        description: form.description.trim() || undefined,
+        icon:        form.icon,
+        icon_bg:     form.iconBg,
+        category_id: Number(form.categoryId),
+        start_date:  form.startDate || undefined,
+        end_date:    form.endDate   || undefined,
+      });
+      handleClose();
+    } catch (err) {
+      setApiError(err.message || 'Не вдалося створити проєкт. Спробуйте ще раз.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleClose = () => {
-    setForm({ ...EMPTY_FORM, admin: currentUser });
+    setForm({ ...EMPTY_FORM });
     setErrors({});
     setSubmitted(false);
+    setApiError('');
     onClose();
   };
 
@@ -105,26 +124,26 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser = 'Анна К
     <Modal isOpen={isOpen} onClose={handleClose} title="Створити новий проєкт" size="md">
       <form onSubmit={handleSubmit} noValidate>
 
-        {/* Project icon picker */}
+        {/* Icon picker */}
         <div className={styles.field}>
           <label className={styles.label}>Іконка проєкту</label>
           <div className={styles.iconGrid}>
-            {ICON_OPTIONS.map((abbr) => (
+            {ICON_OPTIONS.map((icon) => (
               <button
-                key={abbr}
+                key={icon}
                 type="button"
-                className={`${styles.iconBtn} ${form.icon === abbr ? styles.iconBtnSelected : ''}`}
-                style={form.icon === abbr ? { background: ICON_BG_MAP[abbr] } : {}}
-                onClick={() => handleIconSelect(abbr)}
-                aria-label={`Обрати іконку ${abbr}`}
+                className={`${styles.iconBtn} ${form.icon === icon ? styles.iconBtnSelected : ''}`}
+                style={form.icon === icon ? { background: ICON_BG_MAP[icon] } : {}}
+                onClick={() => handleIconSelect(icon)}
+                aria-label={`Обрати іконку ${icon}`}
               >
-                {abbr}
+                {icon}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Project name */}
+        {/* Title */}
         <div className={styles.field}>
           <label className={styles.label} htmlFor="proj-title">
             Назва проєкту <span className={styles.required}>*</span>
@@ -141,7 +160,44 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser = 'Анна К
           {errors.title && <p className={styles.errorMsg}>{errors.title}</p>}
         </div>
 
-        {/* Date row */}
+        {/* Description */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="proj-desc">
+            Опис <span className={styles.optional}>(необов'язково)</span>
+          </label>
+          <textarea
+            id="proj-desc"
+            name="description"
+            className="input"
+            placeholder="Короткий опис мети та діяльності проєкту"
+            value={form.description}
+            onChange={handleChange}
+            rows={3}
+            style={{ resize: 'vertical', minHeight: 72 }}
+          />
+        </div>
+
+        {/* Category */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="proj-category">
+            Категорія <span className={styles.required}>*</span>
+          </label>
+          <select
+            id="proj-category"
+            name="categoryId"
+            className={`input ${errors.categoryId ? styles.inputError : ''}`}
+            value={form.categoryId}
+            onChange={handleChange}
+          >
+            <option value="">Оберіть категорію…</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+          {errors.categoryId && <p className={styles.errorMsg}>{errors.categoryId}</p>}
+        </div>
+
+        {/* Dates */}
         <div className={styles.dateRow}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="proj-start">
@@ -177,7 +233,7 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser = 'Анна К
 
         {/* Admin (read-only) */}
         <div className={styles.field}>
-          <label className={styles.label} htmlFor="proj-admin">Адміністратор</label>
+          <label className={styles.label}>Адміністратор</label>
           <div className={styles.adminRow}>
             <div
               className="avatar"
@@ -186,13 +242,11 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser = 'Анна К
                 width: 32, height: 32, fontSize: 11, flexShrink: 0,
               }}
             >
-              {currentUser.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+              {initials}
             </div>
             <input
-              id="proj-admin"
-              name="admin"
               className="input"
-              value={form.admin}
+              value={displayName}
               readOnly
               style={{ background: '#F8F9FA', color: 'var(--text2)', cursor: 'default' }}
             />
@@ -215,13 +269,19 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser = 'Анна К
           <span className="badge badge-pink" style={{ marginLeft: 'auto' }}>Новий</span>
         </div>
 
+        {apiError && (
+          <p style={{ fontSize: 13, color: '#EF4444', marginBottom: 12, fontWeight: 500 }}>
+            {apiError}
+          </p>
+        )}
+
         {/* Actions */}
         <div className={styles.actions}>
-          <Button type="button" variant="ghost" onClick={handleClose}>
+          <Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
             Скасувати
           </Button>
-          <Button type="submit" variant="primary">
-            Створити проєкт
+          <Button type="submit" variant="primary" disabled={saving}>
+            {saving ? 'Створення…' : 'Створити проєкт'}
           </Button>
         </div>
       </form>

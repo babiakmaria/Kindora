@@ -140,14 +140,14 @@ const AboutRow = ({ label, value }) => (
 
 
 // the full page
-const UserProfilePage = ({ onNavigate, user }) => {
+const UserProfilePage = ({ onNavigate, user, currentUser, onLogout }) => {
   const profileId  = user?.id;
   const profile    = USER_PROFILES[profileId] ?? { ...DEFAULT_PROFILE, ...user };
   const totalProjects = profile.currentProjects.length + profile.finishedProjects.length;
 
   return (
     <div className="app-layout">
-      <Sidebar activePage="" onNavigate={onNavigate} />
+      <Sidebar activePage="" onNavigate={onNavigate} currentUser={currentUser} onLogout={onLogout} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
         <div className="main-content" style={{ padding: 0 }}>

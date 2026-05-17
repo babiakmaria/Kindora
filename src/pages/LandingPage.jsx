@@ -1,11 +1,6 @@
 import React from 'react';
 import styles from './LandingPage.module.css';
 
-const NAV_LINKS = [
-  { label: 'Огляд',       page: 'explore'          },
-  { label: 'Мої проєкти', page: 'projects'          },
-  { label: 'Аналітика',   page: 'admin-analytics'   },
-];
 
 const FEATURES = [
   {
@@ -54,15 +49,9 @@ const LandingPage = ({ onNavigate }) => (
       <div className={styles.navLogo}>
         Kind<span>ora</span>
       </div>
-      <ul className={styles.navLinks}>
-        {NAV_LINKS.map(({ label, page }) => (
-          <li key={page}>
-            <button className={styles.navLink} onClick={() => onNavigate(page)}>{label}</button>
-          </li>
-        ))}
-      </ul>
-      <button className={styles.navCta} onClick={() => onNavigate('register')}>
-        Стати волонтером →
+      <ul className={styles.navLinks} />
+      <button className={styles.navCta} onClick={() => onNavigate('login')}>
+        Увійти →
       </button>
     </nav>
 
@@ -76,9 +65,7 @@ const LandingPage = ({ onNavigate }) => (
       <div className={styles.heroInner}>
         <p className={styles.heroTagline}>Даруй. Єднайся. Зростай.</p>
         <h1 className={styles.heroTitle}>
-          Змінюй світ на краще,{' '}
-          <br className={styles.heroBreak} />
-          один добрий вчинок за раз
+          Змінюй світ на краще
         </h1>
         <p className={styles.heroSub}>
           Kindora об'єднує небайдужих людей із важливими справами.

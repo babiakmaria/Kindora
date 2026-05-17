@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from '../components/common/Button';
 import styles from './AuthPage.module.css';
+import { register } from '../api/auth';
 
 const STRENGTH_COLORS = ['#FF6B9D', '#FF6B9D', '#F59E0B', '#4CAF7D'];
 
@@ -14,25 +15,42 @@ const getStrength = (pw) => {
   return s;
 };
 
-const RegisterPage = ({ onNavigate }) => {
+const RegisterPage = ({ onNavigate, onLogin }) => {
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', password: '',
     role: 'member', agreeTerms: false,
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.agreeTerms) {
+      setError('Потрібно погодитися з умовами використання');
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError('');
+    try {
+      const data = await register({
+        firstName: form.firstName,
+        lastName:  form.lastName,
+        email:     form.email,
+        password:  form.password,
+      });
+      onLogin(data);
       onNavigate(form.role === 'admin' ? 'admin' : 'projects');
-    }, 800);
+    } catch (err) {
+      setError(err.message || 'Невідома помилка. Спробуйте ще раз.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const strength = getStrength(form.password);
@@ -52,25 +70,26 @@ const RegisterPage = ({ onNavigate }) => {
             <div className={styles.formGroup}>
               <label className="input-label">Ім'я</label>
               <input className="input" name="firstName" placeholder="Анна"
-                value={form.firstName} onChange={handleChange} required />
+                value={form.firstName} onChange={handleChange} required autoComplete="given-name" />
             </div>
             <div className={styles.formGroup}>
               <label className="input-label">Прізвище</label>
               <input className="input" name="lastName" placeholder="Коваленко"
-                value={form.lastName} onChange={handleChange} required />
+                value={form.lastName} onChange={handleChange} required autoComplete="family-name" />
             </div>
           </div>
 
           <div className={styles.formGroup}>
             <label className="input-label">Електронна пошта</label>
             <input className="input" type="email" name="email" placeholder="ви@приклад.com"
-              value={form.email} onChange={handleChange} required />
+              value={form.email} onChange={handleChange} required autoComplete="email" />
           </div>
 
           <div className={styles.formGroup}>
             <label className="input-label">Пароль</label>
             <input className="input" type="password" name="password" placeholder="Мін. 8 символів"
-              value={form.password} onChange={handleChange} required />
+              value={form.password} onChange={handleChange} required autoComplete="new-password"
+              minLength={8} />
             <div className={styles.strengthBar}>
               {[0, 1, 2, 3].map((i) => (
                 <div
@@ -103,8 +122,30 @@ const RegisterPage = ({ onNavigate }) => {
             </div>
           </div>
 
+          <div className={styles.checkRow} style={{ marginBottom: 16 }}>
+            <input
+              type="checkbox"
+              id="agreeTerms"
+              name="agreeTerms"
+              checked={form.agreeTerms}
+              onChange={handleChange}
+              style={{ accentColor: 'var(--pk1)' }}
+            />
+            <label htmlFor="agreeTerms" style={{ fontSize: 13, color: 'var(--text2)' }}>
+              Я погоджуюсь з{' '}
+              <span style={{ color: 'var(--pk1)', fontWeight: 600, cursor: 'pointer' }}>
+                умовами використання
+              </span>
+            </label>
+          </div>
 
-          <Button type="submit" variant="primary"
+          {error && (
+            <p style={{ fontSize: 13, color: '#EF4444', marginBottom: 12, fontWeight: 500 }}>
+              {error}
+            </p>
+          )}
+
+          <Button type="submit" variant="primary" disabled={loading}
             style={{ width: '100%', justifyContent: 'center', fontSize: 15, padding: 13, borderRadius: 12 }}>
             {loading ? 'Створення акаунту…' : 'Створити акаунт'}
           </Button>

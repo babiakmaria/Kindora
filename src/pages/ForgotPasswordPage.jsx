@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import Button from '../components/common/Button';
 import styles from './AuthPage.module.css';
+import { forgotPassword } from '../api/auth';
 
 const ForgotPasswordPage = ({ onNavigate }) => {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [step, setStep] = useState('form'); // form or sent
+  const [email,   setEmail]   = useState('');
+  const [error,   setError]   = useState('');
+  const [step,    setStep]    = useState('form'); // 'form' | 'sent'
   const [loading, setLoading] = useState(false);
 
   const validate = () => {
@@ -20,19 +21,26 @@ const ForgotPasswordPage = ({ onNavigate }) => {
     return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // Demo: treat 'notfound@test.com' as unknown email
-      if (email.toLowerCase() === 'notfound@test.com') {
-        setError('Акаунт з такою поштою не знайдено');
-        return;
+    setError('');
+    try {
+      const data = await forgotPassword({ email });
+      // In dev mode the server returns reset_token directly.
+      // Navigate to reset page with the token so the user can test the flow.
+      if (data.reset_token) {
+        onNavigate('reset-password', { status: 'valid', token: data.reset_token });
+      } else {
+        // Production: token was emailed, just show the "check inbox" screen
+        setStep('sent');
       }
-      setStep('sent');
-    }, 900);
+    } catch (err) {
+      setError(err.message || 'Невідома помилка. Спробуйте ще раз.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResend = () => {
@@ -40,7 +48,6 @@ const ForgotPasswordPage = ({ onNavigate }) => {
     setError('');
   };
 
-  // show this after the email is sent successfully
   if (step === 'sent') {
     return (
       <div className={styles.wrap}>
@@ -48,7 +55,6 @@ const ForgotPasswordPage = ({ onNavigate }) => {
         <div className={styles.blob2} />
 
         <div className={styles.card}>
-
           <div style={{ textAlign: 'center', margin: '4px 0 24px' }}>
             <h1 className={styles.title}>Перевірте пошту</h1>
             <p className={styles.sub} style={{ marginBottom: 0 }}>
@@ -96,7 +102,6 @@ const ForgotPasswordPage = ({ onNavigate }) => {
     );
   }
 
-  // main email input form
   return (
     <div className={styles.wrap}>
       <div className={styles.blob1} />
@@ -119,6 +124,7 @@ const ForgotPasswordPage = ({ onNavigate }) => {
               onChange={(e) => { setEmail(e.target.value); setError(''); }}
               style={error ? { borderColor: '#EF4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.1)' } : {}}
               autoFocus
+              autoComplete="email"
             />
             {error && (
               <p style={{ fontSize: 12, color: '#EF4444', marginTop: 6, fontWeight: 500 }}>
@@ -130,6 +136,7 @@ const ForgotPasswordPage = ({ onNavigate }) => {
           <Button
             type="submit"
             variant="primary"
+            disabled={loading}
             style={{ width: '100%', justifyContent: 'center', fontSize: 15, padding: 13, borderRadius: 12 }}
           >
             {loading ? 'Надсилання…' : 'Надіслати посилання'}
