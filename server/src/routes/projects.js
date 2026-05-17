@@ -7,6 +7,30 @@ async function projectRoutes(fastify) {
 
   // ── Helpers ────────────────────────────────────────────────
 
+  // Returns true if userId is an active member of projectId
+  async function isMember(projectId, userId) {
+    const { rows } = await db.query(
+      `SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2 AND is_active = TRUE`,
+      [projectId, userId],
+    )
+    return rows.length > 0
+  }
+
+  // Validates that assignee_id exists and is an active member of the project
+  async function validateAssignee(projectId, assigneeId, reply) {
+    const { rows } = await db.query(
+      `SELECT 1 FROM users u
+       JOIN project_members pm ON pm.user_id = u.id
+       WHERE u.id = $1 AND u.is_active = TRUE AND pm.project_id = $2 AND pm.is_active = TRUE`,
+      [assigneeId, projectId],
+    )
+    if (!rows[0]) {
+      reply.badRequest('Виконавець не є учасником проєкту або не існує')
+      return false
+    }
+    return true
+  }
+
   async function notifyMembers(projectId, actorId, type, payload) {
     const { rows: members } = await db.query(
       `SELECT user_id FROM project_members WHERE project_id = $1 AND is_active = TRUE AND user_id != $2`,
@@ -184,12 +208,39 @@ async function projectRoutes(fastify) {
   // ── POST /api/projects/:id/tasks ──────────────────────────
   fastify.post('/:id/tasks', { onRequest: [fastify.authenticate] }, async (req, reply) => {
     const { title, description, assignee_id, priority, due_date } = req.body
+
     if (!title?.trim()) return reply.badRequest('title обовʼязковий')
 
-    const { rows } = await db.query(
+    const VALID_PRIORITIES = ['low', 'medium', 'high']
+    if (priority && !VALID_PRIORITIES.includes(priority)) {
+      return reply.badRequest(`priority має бути одним з: ${VALID_PRIORITIES.join(', ')}`)
+    }
+
+    // Only project members can create tasks
+    if (!(await isMember(req.params.id, req.user.id))) {
+      return reply.forbidden('Тільки учасники проєкту можуть створювати задачі')
+    }
+
+    // Validate assignee belongs to the project
+    if (assignee_id) {
+      if (!(await validateAssignee(req.params.id, assignee_id, reply))) return
+    }
+
+    // Insert and return full row with assignee/creator names via join
+    const insertRes = await db.query(
       `INSERT INTO tasks (project_id, created_by, assignee_id, title, description, priority, due_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [req.params.id, req.user.id, assignee_id ?? null, title.trim(), description ?? null, priority ?? 'medium', due_date ?? null],
+    )
+    const { rows } = await db.query(
+      `SELECT t.*,
+              a.first_name AS assignee_first_name, a.last_name AS assignee_last_name,
+              c.first_name AS creator_first_name,  c.last_name  AS creator_last_name
+       FROM tasks t
+       LEFT JOIN users a ON a.id = t.assignee_id
+       LEFT JOIN users c ON c.id = t.created_by
+       WHERE t.id = $1`,
+      [insertRes.rows[0].id],
     )
 
     if (assignee_id && assignee_id !== req.user.id) {
@@ -205,38 +256,141 @@ async function projectRoutes(fastify) {
 
   // ── PATCH /api/projects/:id/tasks/:taskId ─────────────────
   fastify.patch('/:id/tasks/:taskId', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+    const projectId = req.params.id
+    const taskId    = req.params.taskId
+
+    // Membership check
+    if (!(await isMember(projectId, req.user.id))) {
+      return reply.forbidden('Тільки учасники проєкту можуть редагувати задачі')
+    }
+
+    // Pull out hours_logged before filtering — it's not a task column
+    const { hours_logged: rawHours, ...bodyRest } = req.body ?? {}
+
     const ALLOWED = ['title', 'description', 'assignee_id', 'priority', 'is_done', 'due_date']
-    const fields = Object.fromEntries(Object.entries(req.body).filter(([k]) => ALLOWED.includes(k)))
-    const keys = Object.keys(fields)
-    if (!keys.length) return reply.badRequest('Немає допустимих полів')
+    const fields  = Object.fromEntries(Object.entries(bodyRest).filter(([k]) => ALLOWED.includes(k)))
+    const keys    = Object.keys(fields)
+    if (!keys.length && rawHours === undefined) return reply.badRequest('Немає допустимих полів')
 
-    const sets = keys.map((k, i) => `${k} = $${i + 2}`)
-    const { rows } = await db.query(
-      `UPDATE tasks SET ${sets.join(', ')}
-       WHERE id = $1 AND project_id = $${keys.length + 2} RETURNING *`,
-      [req.params.taskId, ...Object.values(fields), req.params.id],
+    // ── Field validation ──
+    if ('title' in fields && !fields.title?.trim()) {
+      return reply.badRequest('title не може бути порожнім')
+    }
+    if (fields.title) fields.title = fields.title.trim()
+
+    const VALID_PRIORITIES = ['low', 'medium', 'high']
+    if (fields.priority && !VALID_PRIORITIES.includes(fields.priority)) {
+      return reply.badRequest(`priority має бути одним з: ${VALID_PRIORITIES.join(', ')}`)
+    }
+
+    if (fields.assignee_id) {
+      if (!(await validateAssignee(projectId, fields.assignee_id, reply))) return
+    }
+
+    // ── Validate hours_logged ──
+    let hoursToLog = null
+    if (rawHours !== undefined && rawHours !== null && rawHours !== '') {
+      hoursToLog = parseFloat(rawHours)
+      if (isNaN(hoursToLog) || hoursToLog <= 0) {
+        return reply.badRequest('hours_logged має бути числом більше 0')
+      }
+      if (hoursToLog > 24) {
+        return reply.badRequest('hours_logged не може перевищувати 24 години')
+      }
+    }
+
+    // ── Fetch current task state (to detect is_done transition) ──
+    const { rows: current } = await db.query(
+      `SELECT is_done, assignee_id FROM tasks WHERE id = $1 AND project_id = $2`,
+      [taskId, projectId],
     )
-    if (!rows[0]) return reply.notFound('Задачу не знайдено')
+    if (!current[0]) return reply.notFound('Задачу не знайдено')
+    const wasNotDone = !current[0].is_done
 
-    // Якщо змінився assignee — відправити нотифікацію
+    // ── Update task (skip DB call if no task fields to change) ──
+    let updatedTask
+    if (keys.length) {
+      const sets = keys.map((k, i) => `${k} = $${i + 2}`)
+      const { rows } = await db.query(
+        `UPDATE tasks SET ${sets.join(', ')}
+         WHERE id = $1 AND project_id = $${keys.length + 2}
+         RETURNING *`,
+        [taskId, ...Object.values(fields), projectId],
+      )
+      if (!rows[0]) return reply.notFound('Задачу не знайдено')
+      updatedTask = rows[0]
+    } else {
+      updatedTask = (await db.query(`SELECT * FROM tasks WHERE id = $1`, [taskId])).rows[0]
+    }
+
+    // ── Notify new assignee ──
     if (fields.assignee_id && fields.assignee_id !== req.user.id) {
       await db.query(
         `INSERT INTO notifications (recipient_id, actor_id, project_id, type, payload)
          VALUES ($1, $2, $3, 'task_assigned', $4)`,
-        [fields.assignee_id, req.user.id, req.params.id, JSON.stringify({ task_title: rows[0].title })],
+        [fields.assignee_id, req.user.id, projectId, JSON.stringify({ task_title: updatedTask.title })],
       )
     }
 
-    return rows[0]
+    // ── Time tracking: only when transitioning from not-done → done ──
+    const transitioningToDone = fields.is_done === true && wasNotDone
+    if (transitioningToDone) {
+      // Determine whose counters to update: assignee or the person completing it
+      const targetUserId = updatedTask.assignee_id || req.user.id
+
+      // Increment tasks_completed for that member
+      await db.query(
+        `UPDATE project_members
+         SET tasks_completed = tasks_completed + 1
+         WHERE project_id = $1 AND user_id = $2`,
+        [projectId, targetUserId],
+      )
+
+      // Log hours if provided
+      if (hoursToLog !== null) {
+        const today = new Date().toISOString().slice(0, 10)
+
+        // Persist on the task itself so the UI can show it without joins
+        await db.query(
+          `UPDATE tasks SET logged_hours = $1 WHERE id = $2`,
+          [hoursToLog, taskId],
+        )
+        updatedTask.logged_hours = hoursToLog
+
+        await db.query(
+          `INSERT INTO activity_logs (project_id, user_id, hours_logged, description, log_date)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [projectId, req.user.id, hoursToLog,
+           `Задача: ${updatedTask.title}`, today],
+        )
+        await db.query(
+          `UPDATE project_members
+           SET hours_contributed = hours_contributed + $1
+           WHERE project_id = $2 AND user_id = $3`,
+          [hoursToLog, projectId, req.user.id],
+        )
+      }
+    }
+
+    return updatedTask
   })
 
   // ── DELETE /api/projects/:id/tasks/:taskId ────────────────
   fastify.delete('/:id/tasks/:taskId', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+    // Only members can delete; additionally only task creator or project owner can delete
+    if (!(await isMember(req.params.id, req.user.id))) {
+      return reply.forbidden('Тільки учасники проєкту можуть видаляти задачі')
+    }
+
     const { rowCount } = await db.query(
-      `DELETE FROM tasks WHERE id = $1 AND project_id = $2`,
-      [req.params.taskId, req.params.id],
+      `DELETE FROM tasks
+       WHERE id = $1 AND project_id = $2
+         AND (created_by = $3 OR $3 IN (
+           SELECT user_id FROM project_members WHERE project_id = $2 AND role = 'owner' AND is_active = TRUE
+         ))`,
+      [req.params.taskId, req.params.id, req.user.id],
     )
-    if (!rowCount) return reply.notFound('Задачу не знайдено')
+    if (!rowCount) return reply.forbidden('Задачу не знайдено або недостатньо прав для видалення')
     return reply.code(204).send()
   })
 

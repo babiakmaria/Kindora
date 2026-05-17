@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import styles  from './ProjectDetailPage.module.css';
+import { fetchTasks, createTask, updateTask, deleteTask, fetchProjectMembers } from '../api/tasks';
 
 // Mock contributors (active on this project — also used by calendar lookups)
 const CONTRIBUTORS = [
@@ -129,7 +130,37 @@ const PRIORITY   = { high: { color: '#FF6B9D', bg: '#FFF0F5', label: 'Важли
 const padDate  = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 const daysInMonth  = (y, m) => new Date(y, m + 1, 0).getDate();
 const firstWeekday = (y, m) => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; };
-const getContributor = (id) => CONTRIBUTORS.find((c) => c.id === id);
+const getContributor = (id) => CONTRIBUTORS.find((c) => c.id === id); // calendar only
+
+// API shape → UI shape mappers
+const mapTask = (t) => ({
+  id:          t.id,
+  title:       t.title,
+  assigneeId:  t.assignee_id || null,
+  done:        t.is_done,
+  priority:    t.priority || 'medium',
+  loggedHours: t.logged_hours ? Number(t.logged_hours) : null,
+});
+
+// e.g. 0.5 → "30хв",  1.5 → "1г 30хв",  2 → "2г"
+const formatTrackedTime = (hours) => {
+  if (!hours || hours <= 0) return null;
+  const totalMin = Math.round(hours * 60);
+  if (totalMin < 1) return null;
+  if (totalMin < 60) return `${totalMin}хв`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}г ${m}хв` : `${h}г`;
+};
+
+const mapMember = (m) => ({
+  id:       m.id,
+  name:     `${m.first_name || ''} ${m.last_name || ''}`.trim(),
+  initials: `${(m.first_name || '')[0] || ''}${(m.last_name || '')[0] || ''}`.toUpperCase() || '??',
+  color:    m.avatar_color || '#6B7280',
+  hours:    Number(m.hours_contributed) || 0,
+  tasks:    Number(m.tasks_completed)   || 0,
+});
 
 // Sub-components
 
@@ -264,15 +295,114 @@ const DayDetailPanel = ({ dateStr, entries, onClose }) => {
   );
 };
 
-// Todo item
-const TodoItem = ({ todo, onToggle }) => {
-  const assignee = getContributor(todo.assigneeId);
-  const p        = PRIORITY[todo.priority];
+// ── Time-tracking popup ──────────────────────────────────────
+const TimeTrackingPopup = ({ task, onConfirm, onCancel }) => {
+  const [value, setValue]   = useState('');
+  const [unit,  setUnit]    = useState('minutes');
+  const [error, setError]   = useState('');
+  const inputRef            = useRef(null);
+
+  useEffect(() => {
+    // Focus input when popup opens
+    setTimeout(() => inputRef.current?.focus(), 50);
+
+    // Escape closes
+    const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const computeHours = () => {
+    const n = parseFloat(value);
+    if (!value || isNaN(n) || n <= 0) return null;
+    return unit === 'minutes' ? +(n / 60).toFixed(4) : n;
+  };
+
+  const handleConfirm = () => {
+    const hours = computeHours();
+    if (value) {
+      // Value was entered — validate it
+      const n = parseFloat(value);
+      if (isNaN(n) || n <= 0) { setError('Введіть коректне число'); return; }
+      const maxVal = unit === 'minutes' ? 1440 : 24;
+      if (n > maxVal) { setError(`Максимум ${maxVal} ${unit === 'minutes' ? 'хвилин' : 'годин'}`); return; }
+    }
+    onConfirm(hours); // null if no time entered
+  };
+
+  const handleSkip = () => onConfirm(null);
+
   return (
-    <div className={`${styles.todoItem} ${todo.done ? styles.todoDone : ''}`}>
+    <div className={styles.timePopupOverlay} onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div className={styles.timePopup}>
+        {/* Header */}
+        <div className={styles.timePopupHeader}>
+          <span className={styles.timePopupIcon}>⏱</span>
+          <div>
+            <div className={styles.timePopupHeading}>Трекінг часу</div>
+            <div className={styles.timePopupTaskName} title={task.title}>{task.title}</div>
+          </div>
+          <button className={styles.timePopupClose} onClick={onCancel} aria-label="Закрити">×</button>
+        </div>
+
+        {/* Time input */}
+        <div className={styles.addFormRow} style={{ marginTop: 14 }}>
+          <span className={styles.addFormLabel}>Витрачений час <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(необов'язково)</span></span>
+          <div className={styles.timeInputRow}>
+            <input
+              ref={inputRef}
+              type="number"
+              min="1"
+              step="1"
+              className={styles.timeInput}
+              value={value}
+              onChange={(e) => { setValue(e.target.value); setError(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleConfirm(); }}
+              placeholder="0"
+            />
+            <div className={styles.unitToggle}>
+              <button
+                type="button"
+                className={`${styles.unitBtn} ${unit === 'minutes' ? styles.unitBtnActive : ''}`}
+                onClick={() => setUnit('minutes')}
+              >хв</button>
+              <button
+                type="button"
+                className={`${styles.unitBtn} ${unit === 'hours' ? styles.unitBtnActive : ''}`}
+                onClick={() => setUnit('hours')}
+              >год</button>
+            </div>
+          </div>
+          {error && <p className={styles.timeError}>{error}</p>}
+        </div>
+
+        {/* Actions */}
+        <div className={styles.timePopupActions}>
+          <button type="button" className={styles.addFormCancel} onClick={onCancel}>
+            Скасувати
+          </button>
+          <button type="button" className={styles.skipBtn} onClick={handleSkip}>
+            Без трекінгу
+          </button>
+          <button type="button" className={styles.addFormConfirm} onClick={handleConfirm}>
+            Підтвердити
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Todo item
+const TodoItem = ({ todo, onToggle, onDelete, members = [], disabled = false }) => {
+  const assignee = members.find((m) => m.id === todo.assigneeId) || null;
+  const p        = PRIORITY[todo.priority] || PRIORITY.medium;
+  return (
+    <div className={`${styles.todoItem} ${todo.done ? styles.todoDone : ''} ${disabled ? styles.todoDisabled : ''}`}>
       <button
         className={`${styles.checkbox} ${todo.done ? styles.checkboxDone : ''}`}
-        onClick={() => onToggle(todo.id)}
+        onClick={() => !disabled && onToggle && onToggle(todo.id)}
+        disabled={disabled}
         aria-label="Позначити виконаним"
       >
         {todo.done && (
@@ -283,7 +413,14 @@ const TodoItem = ({ todo, onToggle }) => {
       </button>
 
       <div className={styles.todoBody}>
-        <span className={styles.todoTitle}>{todo.title}</span>
+        <div className={styles.todoTitleRow}>
+          <span className={styles.todoTitle}>{todo.title}</span>
+          {todo.done && formatTrackedTime(todo.loggedHours) && (
+            <span className={styles.todoTimeTag}>
+              ⏱ {formatTrackedTime(todo.loggedHours)}
+            </span>
+          )}
+        </div>
         <div className={styles.todoMeta}>
           {assignee && (
             <div className={styles.todoAssignee}>
@@ -298,12 +435,23 @@ const TodoItem = ({ todo, onToggle }) => {
           </span>
         </div>
       </div>
+
+      {onDelete && (
+        <button
+          className={styles.todoDelete}
+          onClick={(e) => { e.stopPropagation(); onDelete(todo.id); }}
+          aria-label="Видалити задачу"
+          title="Видалити"
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 };
 
 // Main page
-const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogout }) => {
+const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogout, onUpdateProject }) => {
   const proj = project ?? {
     icon: '🌳', iconBg: '#EAF7F0',
     title: 'Відновлення міського парку',
@@ -312,16 +460,48 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
     category: 'Довкілля', progress: 72, due: '15 квіт.',
   };
 
+  const projectId = proj.id || null;
+
   const [year,          setYear]          = useState(2026);
   const [month,         setMonth]         = useState(3); // April = index 3
   const [selectedDate,  setSelectedDate]  = useState(null);
-  const [todos,         setTodos]         = useState(INITIAL_TODOS);
+  const [todos,         setTodos]         = useState([]);
+  const [members,       setMembers]       = useState([]);
+  const [tasksLoading,  setTasksLoading]  = useState(false);
+  const [taskError,     setTaskError]     = useState('');
+  const [isCompleted,   setIsCompleted]   = useState(proj.status === 'completed');
+
+  // Time-tracking popup
+  const [completingTask, setCompletingTask] = useState(null); // { id, title } | null
+  const [trackValue,     setTrackValue]     = useState('');   // raw input
+  const [trackUnit,      setTrackUnit]      = useState('hours'); // 'hours' | 'minutes'
+  const [completing,     setCompleting]     = useState(false);
 
   // Inline add-todo form state
   const [addingTodo,      setAddingTodo]      = useState(false);
   const [draftTitle,      setDraftTitle]      = useState('');
-  const [draftAssigneeId, setDraftAssigneeId] = useState(CONTRIBUTORS[0].id);
+  const [draftAssigneeId, setDraftAssigneeId] = useState('');
   const [draftPriority,   setDraftPriority]   = useState('medium');
+
+  // Load tasks + members from API when project is known; fall back to mock otherwise
+  useEffect(() => {
+    if (!projectId) {
+      setTodos(INITIAL_TODOS);
+      setMembers(CONTRIBUTORS.map(mapMember));
+      return;
+    }
+    setTasksLoading(true);
+    setTaskError('');
+    Promise.all([
+      fetchTasks(projectId).catch(() => null),
+      fetchProjectMembers(projectId).catch(() => null),
+    ]).then(([rawTasks, rawMembers]) => {
+      if (rawTasks)   setTodos(rawTasks.map(mapTask));
+      else            setTodos(INITIAL_TODOS);
+      if (rawMembers) setMembers(rawMembers.map(mapMember));
+      else            setMembers(CONTRIBUTORS.map(mapMember));
+    }).finally(() => setTasksLoading(false));
+  }, [projectId]);
 
   // Tags state
   const [tags,         setTags]         = useState(['Довкілля', 'Волонтерство']);
@@ -389,29 +569,132 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
 
   const prevMonth = () => { setSelectedDate(null); if (month === 0) { setMonth(11); setYear((y) => y - 1); } else setMonth((m) => m - 1); };
   const nextMonth = () => { setSelectedDate(null); if (month === 11) { setMonth(0); setYear((y) => y + 1); } else setMonth((m) => m + 1); };
-  const toggleTodo = (id) => setTodos((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
+
+  const toggleTodo = (id) => {
+    const todo = todos.find((t) => t.id === id);
+    if (!todo) return;
+
+    if (!todo.done) {
+      // Open time-tracking popup instead of completing immediately
+      setCompletingTask({ id: todo.id, title: todo.title });
+      setTrackValue('');
+      setTrackUnit('hours');
+      return;
+    }
+
+    // Already done → uncomplete directly, no popup
+    handleUncomplete(id, todo);
+  };
+
+  const handleUncomplete = async (id, todo) => {
+    setTodos((prev) => prev.map((t) => t.id === id ? { ...t, done: false } : t));
+    if (!projectId) return;
+    try {
+      await updateTask(projectId, id, { is_done: false });
+    } catch {
+      setTodos((prev) => prev.map((t) => t.id === id ? { ...t, done: true } : t));
+    }
+  };
+
+  // Confirm popup — complete with optional time
+  const handleCompleteConfirm = async () => {
+    if (!completingTask) return;
+    const { id, title } = completingTask;
+
+    const rawVal = parseFloat(trackValue);
+    const hoursToLog = rawVal > 0
+      ? (trackUnit === 'minutes' ? +(rawVal / 60).toFixed(4) : rawVal)
+      : null;
+
+    // Optimistic update + close popup immediately
+    setTodos((prev) => prev.map((t) =>
+      t.id === id ? { ...t, done: true, loggedHours: hoursToLog } : t
+    ));
+    setCompletingTask(null);
+
+    if (!projectId) return;
+
+    setCompleting(true);
+    try {
+      await updateTask(projectId, id, {
+        is_done: true,
+        ...(hoursToLog !== null ? { hours_logged: hoursToLog } : {}),
+      });
+    } catch (err) {
+      setTodos((prev) => prev.map((t) => t.id === id ? { ...t, done: false } : t));
+      setTaskError(err.message || 'Помилка завершення задачі');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
+  // Cancel — close popup, task stays unchanged
+  const handleCompleteCancel = () => setCompletingTask(null);
+
+  // Complete project — mark as 'completed' via API, disable task editing
+  const handleCompleteProject = async () => {
+    setIsCompleted(true);
+    if (!projectId || !onUpdateProject) return;
+    try {
+      await onUpdateProject(projectId, { status: 'completed' });
+    } catch (err) {
+      console.error('Не вдалося завершити проєкт:', err.message);
+      setIsCompleted(false);
+    }
+  };
+
+  const handleDeleteTodo = async (id) => {
+    // Optimistic removal
+    setTodos((prev) => prev.filter((t) => t.id !== id));
+    if (!projectId) return;
+    try {
+      await deleteTask(projectId, id);
+    } catch (err) {
+      // Restore on failure (re-fetch to be safe)
+      fetchTasks(projectId).then((rows) => setTodos(rows.map(mapTask))).catch(() => {});
+    }
+  };
 
   const openAddForm = () => {
     setDraftTitle('');
-    setDraftAssigneeId(CONTRIBUTORS[0].id);
+    setDraftAssigneeId(members[0]?.id || '');
     setDraftPriority('medium');
+    setTaskError('');
     setAddingTodo(true);
   };
 
-  const cancelAdd = () => setAddingTodo(false);
+  const cancelAdd = () => { setAddingTodo(false); setTaskError(''); };
 
-  const handleAddTodo = () => {
+  const handleAddTodo = async () => {
     if (!draftTitle.trim()) return;
-    setTodos((prev) => [
-      ...prev,
-      { id: Date.now(), title: draftTitle.trim(), assigneeId: draftAssigneeId, done: false, priority: draftPriority },
-    ]);
-    setAddingTodo(false);
+    setTaskError('');
+
+    if (!projectId) {
+      // Mock mode (no real project loaded yet)
+      setTodos((prev) => [
+        ...prev,
+        { id: String(Date.now()), title: draftTitle.trim(), assigneeId: draftAssigneeId || null, done: false, priority: draftPriority },
+      ]);
+      setAddingTodo(false);
+      return;
+    }
+
+    try {
+      const created = await createTask(projectId, {
+        title:       draftTitle.trim(),
+        assignee_id: draftAssigneeId || null,
+        priority:    draftPriority,
+      });
+      setTodos((prev) => [...prev, mapTask(created)]);
+      setAddingTodo(false);
+    } catch (err) {
+      setTaskError(err.message || 'Не вдалося створити задачу');
+    }
   };
 
-  const doneCount  = todos.filter((t) => t.done).length;
-  const totalTodos = todos.length;
-  const todoProgress = Math.round((doneCount / totalTodos) * 100);
+  const doneCount    = todos.filter((t) => t.done).length;
+  const totalTodos   = todos.length;
+  const todoProgress = totalTodos > 0 ? Math.round((doneCount / totalTodos) * 100) : 0;
 
   // Build calendar grid
   const totalDays = daysInMonth(year, month);
@@ -660,6 +943,22 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
               <div className={styles.sidebarHead}>
                 <div className={styles.sidebarTitle}>До виконання</div>
                 <span className={styles.todoCounter}>{doneCount}/{totalTodos}</span>
+                {isCompleted ? (
+                  <div className={styles.completedBadge}>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <circle cx="5" cy="5" r="4.5" fill="#4CAF7D" />
+                      <path d="M2.5 5L4 6.5L7.5 3" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Завершено
+                  </div>
+                ) : totalTodos > 0 && doneCount === totalTodos ? (
+                  <button className={styles.completeProjectBtn} onClick={handleCompleteProject}>
+                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                      <path d="M1.5 5.5L4 8L9.5 2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Завершити
+                  </button>
+                ) : null}
               </div>
 
               {/* Todo progress */}
@@ -674,8 +973,20 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
               </div>
 
               <div className={styles.todoList}>
+                {tasksLoading && (
+                  <p style={{ fontSize: 12, color: 'var(--text3)', padding: '8px 0', textAlign: 'center' }}>
+                    Завантаження…
+                  </p>
+                )}
                 {todos.map((todo) => (
-                  <TodoItem key={todo.id} todo={todo} onToggle={toggleTodo} />
+                  <TodoItem
+                    key={todo.id}
+                    todo={todo}
+                    onToggle={isCompleted ? undefined : toggleTodo}
+                    onDelete={projectId && !isCompleted ? handleDeleteTodo : null}
+                    members={members}
+                    disabled={isCompleted}
+                  />
                 ))}
               </div>
 
@@ -695,7 +1006,19 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                   <div className={styles.addFormRow}>
                     <span className={styles.addFormLabel}>Виконавець</span>
                     <div className={styles.assigneeOptions}>
-                      {CONTRIBUTORS.map((c) => (
+                      {/* No assignee option */}
+                      <button
+                        className={`${styles.assigneeOpt} ${!draftAssigneeId ? styles.assigneeOptActive : ''}`}
+                        style={!draftAssigneeId ? { outline: '3px solid var(--text3)', outlineOffset: '2px' } : {}}
+                        onClick={() => setDraftAssigneeId('')}
+                        title="Без виконавця"
+                        type="button"
+                      >
+                        <div className={styles.assigneeOptAva} style={{ background: 'var(--neu)', color: 'var(--text3)', fontSize: 10 }}>
+                          —
+                        </div>
+                      </button>
+                      {members.map((c) => (
                         <button
                           key={c.id}
                           className={`${styles.assigneeOpt} ${draftAssigneeId === c.id ? styles.assigneeOptActive : ''}`}
@@ -730,6 +1053,13 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                     </div>
                   </div>
 
+                  {/* Error */}
+                  {taskError && (
+                    <p style={{ fontSize: 12, color: '#EF4444', margin: '4px 0', fontWeight: 500 }}>
+                      {taskError}
+                    </p>
+                  )}
+
                   {/* Actions */}
                   <div className={styles.addFormActions}>
                     <button type="button" className={styles.addFormCancel} onClick={cancelAdd}>
@@ -746,7 +1076,12 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                   </div>
                 </div>
               ) : (
-                <button className={styles.addTodoBtn} onClick={openAddForm}>
+                <button
+                  className={styles.addTodoBtn}
+                  onClick={!isCompleted ? openAddForm : undefined}
+                  disabled={isCompleted}
+                  style={isCompleted ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                >
                   + Додати завдання
                 </button>
               )}
@@ -754,6 +1089,74 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
           </div>
         </div>
       </div>
+
+      {/* ── Time-tracking completion popup ─────────────────── */}
+      {completingTask && (
+        <div className={styles.timePopupOverlay} onClick={handleCompleteCancel}>
+          <div className={styles.timePopupCard} onClick={(e) => e.stopPropagation()}>
+
+            <div className={styles.timePopupHeader}>
+              <span className={styles.timePopupTitle}>Завершення задачі</span>
+              <button className={styles.timePopupClose} onClick={handleCompleteCancel} aria-label="Закрити">
+                ×
+              </button>
+            </div>
+
+            <div className={styles.timePopupTaskName}>{completingTask.title}</div>
+
+            <div className={styles.addFormRow}>
+              <label className={styles.addFormLabel}>Скільки часу витрачено? (необов'язково)</label>
+              <div className={styles.timeInputRow}>
+                <input
+                  className={styles.timeInput}
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="0"
+                  value={trackValue}
+                  onChange={(e) => setTrackValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCompleteConfirm();
+                    if (e.key === 'Escape') handleCompleteCancel();
+                  }}
+                  autoFocus
+                />
+                <div className={styles.unitToggle}>
+                  <button
+                    type="button"
+                    className={`${styles.unitBtn} ${trackUnit === 'minutes' ? styles.unitBtnActive : ''}`}
+                    onClick={() => setTrackUnit('minutes')}
+                  >
+                    Хв
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.unitBtn} ${trackUnit === 'hours' ? styles.unitBtnActive : ''}`}
+                    onClick={() => setTrackUnit('hours')}
+                  >
+                    Год
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.timePopupActions}>
+              <button type="button" className={styles.timePopupCancel} onClick={handleCompleteCancel}>
+                Скасувати
+              </button>
+              <button
+                type="button"
+                className={styles.timePopupConfirm}
+                onClick={handleCompleteConfirm}
+                disabled={completing}
+              >
+                Підтвердити
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };

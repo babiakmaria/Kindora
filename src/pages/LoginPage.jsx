@@ -36,6 +36,8 @@ const LoginPage = ({ onNavigate, onLogin }) => {
     <div className={styles.wrap}>
       <div className={styles.blob1} />
       <div className={styles.blob2} />
+      <div className={styles.blob3} />
+      <div className={styles.blob4} />
 
       <div className={styles.card}>
         <h1 className={styles.title}>З поверненням</h1>
@@ -57,15 +59,7 @@ const LoginPage = ({ onNavigate, onLogin }) => {
           </div>
 
           <div className={styles.formGroup}>
-            <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Пароль</span>
-              <span
-                style={{ color: 'var(--pk1)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-                onClick={() => onNavigate('forgot-password')}
-              >
-                Забули пароль?
-              </span>
-            </label>
+            <label className="input-label">Пароль</label>
             <input
               className="input"
               type="password"

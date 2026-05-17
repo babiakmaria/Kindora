@@ -4,8 +4,6 @@ import './styles/globals.css';
 import LandingPage         from './pages/LandingPage';
 import LoginPage           from './pages/LoginPage';
 import RegisterPage        from './pages/RegisterPage';
-import ForgotPasswordPage  from './pages/ForgotPasswordPage';
-import ResetPasswordPage   from './pages/ResetPasswordPage';
 import ProjectsListPage    from './pages/ProjectsListPage';
 import ProjectDetailPage   from './pages/ProjectDetailPage';
 import ProfilePage         from './pages/ProfilePage';
@@ -16,15 +14,13 @@ import NotificationsPage   from './pages/NotificationsPage';
 import MyProjectsPage      from './pages/MyProjectsPage';
 import { PROJECTS }        from './data/data';
 import { getMe }           from './api/auth';
-import { fetchProjects, createProject, mapProject } from './api/projects';
+import { fetchProjects, createProject, mapProject, updateProject } from './api/projects';
 
 // ── Page registry ─────────────────────────────────────────
 const PAGES = {
   landing:            LandingPage,
   login:              LoginPage,
   register:           RegisterPage,
-  'forgot-password':  ForgotPasswordPage,
-  'reset-password':   ResetPasswordPage,
   projects:           MyProjectsPage,
   explore:            ProjectsListPage,
   'project-detail':   ProjectDetailPage,
@@ -36,15 +32,13 @@ const PAGES = {
 };
 
 // Pages that don't require authentication
-const PUBLIC_PAGES = new Set(['landing', 'login', 'register', 'forgot-password', 'reset-password']);
+const PUBLIC_PAGES = new Set(['landing', 'login', 'register']);
 
 function App() {
   const [page,             setPage]            = useState('landing');
   const [previousPage,     setPreviousPage]     = useState('projects');
   const [selectedProject,  setSelectedProject]  = useState(null);
   const [selectedUser,     setSelectedUser]     = useState(null);
-  const [resetTokenStatus, setResetTokenStatus] = useState('valid');
-  const [resetToken,       setResetToken]       = useState(null);
 
   // ── Auth state ─────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState(null);
@@ -113,15 +107,6 @@ function App() {
     if (target === 'user-profile' && payload) {
       setSelectedUser(payload);
     }
-    if (target === 'reset-password' && payload) {
-      if (typeof payload === 'object') {
-        setResetTokenStatus(payload.status || 'valid');
-        setResetToken(payload.token || null);
-      } else {
-        setResetTokenStatus(payload);
-        setResetToken(null);
-      }
-    }
     if (PAGES[target]) setPage(target);
   };
 
@@ -144,6 +129,31 @@ function App() {
     );
   };
 
+  const handleUpdateProject = async (id, data) => {
+    try {
+      const updated = await updateProject(id, data);
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                ...mapProject(updated, currentUser?.id),
+                // keep joined flag since mapProject can't compute it without member query
+                joined: p.joined,
+              }
+            : p
+        )
+      );
+      // Sync selectedProject so project detail page reflects the new status
+      setSelectedProject((prev) =>
+        prev?.id === id ? { ...prev, status: updated.status ?? data.status ?? prev.status } : prev
+      );
+    } catch (err) {
+      console.error('Не вдалося оновити проєкт:', err.message);
+      throw err;
+    }
+  };
+
   if (authLoading) {
     return (
       <div style={{
@@ -163,11 +173,10 @@ function App() {
       projects={projects}
       onAddProject={handleAddProject}
       onToggleJoin={handleToggleJoin}
+      onUpdateProject={handleUpdateProject}
       project={selectedProject}
       fromPage={previousPage}
       user={selectedUser}
-      tokenStatus={resetTokenStatus}
-      resetToken={resetToken}
       currentUser={currentUser}
       onLogin={handleLogin}
       onLogout={handleLogout}

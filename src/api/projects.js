@@ -63,6 +63,16 @@ export const createProject = async (data) => {
   return handleResponse(res);
 };
 
+// PATCH /api/projects/:id
+export const updateProject = async (projectId, data) => {
+  const res = await fetch(`${BASE}/projects/${projectId}`, {
+    method: 'PATCH',
+    headers: headers(),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+};
+
 // GET /api/categories
 export const fetchCategories = async () => {
   const res = await fetch(`${BASE}/categories`, { headers: headers() });

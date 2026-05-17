@@ -1060,6 +1060,44 @@
   padding: 1px 7px;
 }
 
+.todoTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.todoTimeTag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text3);
+  background: var(--neu);
+  border-radius: 20px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.todoDelete {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.todoItem:hover .todoDelete {
+  opacity: 1;
+}
+.todoDelete:hover {
+  color: #EF4444;
+}
+
 /* Add todo button */
 .addTodoBtn {
   display: block;
@@ -1240,4 +1278,224 @@
 .addFormConfirm:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ── Time-tracking completion popup ─────────────────────── */
+.timePopupOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 20, 0.38);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: overlayFadeIn 0.15s ease;
+}
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.timePopupCard {
+  background: #fff;
+  border-radius: var(--rad);
+  padding: 22px 22px 18px;
+  width: 330px;
+  max-width: 100%;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+  border: 1.5px solid var(--pk2);
+  animation: formSlideIn 0.17s ease;
+  position: relative;
+}
+
+.timePopupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.timePopupTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text1);
+  letter-spacing: -0.2px;
+}
+.timePopupClose {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 4px;
+  transition: color 0.12s;
+}
+.timePopupClose:hover { color: var(--text1); }
+
+.timePopupTaskName {
+  font-size: 12px;
+  color: var(--text2);
+  background: var(--neu);
+  border-radius: var(--radsm);
+  padding: 7px 10px;
+  margin-bottom: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  border-left: 3px solid var(--pk1);
+}
+
+/* Time input + unit toggle in a single row */
+.timeInputRow {
+  display: flex;
+  gap: 7px;
+  align-items: stretch;
+}
+.timeInput {
+  flex: 1;
+  padding: 8px 11px;
+  border-radius: var(--radsm);
+  border: 1.5px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text1);
+  background: #fff;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-width: 0;
+}
+.timeInput:focus {
+  border-color: var(--pk1);
+  box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+}
+.timeInput::placeholder { color: var(--text3); font-weight: 400; }
+
+.unitToggle {
+  display: flex;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radsm);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.unitBtn {
+  padding: 0 11px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  background: #fff;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.13s, color 0.13s;
+  white-space: nowrap;
+}
+.unitBtn + .unitBtn {
+  border-left: 1.5px solid var(--border);
+}
+.unitBtnActive {
+  background: var(--pk1);
+  color: #fff;
+}
+
+/* Three-button action row */
+.timePopupActions {
+  display: flex;
+  gap: 7px;
+  margin-top: 16px;
+}
+.timePopupCancel {
+  padding: 8px 10px;
+  border-radius: var(--radsm);
+  border: 1.5px solid var(--border);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.timePopupCancel:hover {
+  border-color: var(--text2);
+  color: var(--text1);
+}
+.timePopupSkip {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radsm);
+  border: 1.5px solid var(--border);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.timePopupSkip:hover {
+  border-color: var(--text2);
+  color: var(--text1);
+}
+.timePopupConfirm {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radsm);
+  border: none;
+  background: var(--pk1);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, opacity 0.15s;
+}
+.timePopupConfirm:hover:not(:disabled) { background: #E85C8A; }
+.timePopupConfirm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Завершити project button ────────────────────────────── */
+.completeProjectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radpill);
+  border: 1.5px solid #BBF7D0;
+  background: #F0FDF4;
+  color: #15803D;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.completeProjectBtn:hover {
+  background: #DCFCE7;
+  border-color: #15803D;
+}
+
+/* Badge shown after project is completed */
+.completedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radpill);
+  border: 1.5px solid #BBF7D0;
+  background: #F0FDF4;
+  color: #15803D;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Disabled todo item styling (when project is completed) */
+.todoDisabled {
+  pointer-events: none;
+  opacity: 0.75;
 }

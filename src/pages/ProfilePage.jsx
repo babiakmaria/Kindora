@@ -100,9 +100,12 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
   const joinDate    = formatJoinDate(currentUser?.created_at);
   const avatarColor = currentUser?.avatar_color || '#FF6B9D';
 
-  // Stats from user_stats view fields on currentUser
-  const totalProjects = (Number(currentUser?.active_projects_count) || 0)
-                      + (Number(currentUser?.finished_projects_count) || 0);
+  // Stats — project count comes from the fetched membership list so it
+  // includes both projects the user created and projects they joined.
+  // Falls back to user_stats view count while the list is still loading.
+  const totalProjects = dataLoading
+    ? Number(currentUser?.active_projects_count) || 0
+    : userProjects.length;
   const totalHours    = Number(currentUser?.total_logged_hours) || 0;
   const totalTasks    = Number(currentUser?.total_tasks)        || 0;
 

@@ -18,7 +18,7 @@ const getStrength = (pw) => {
 const RegisterPage = ({ onNavigate, onLogin }) => {
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', password: '',
-    role: 'member', agreeTerms: false,
+    role: 'member',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -31,10 +31,6 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.agreeTerms) {
-      setError('Потрібно погодитися з умовами використання');
-      return;
-    }
     setLoading(true);
     setError('');
     try {
@@ -60,6 +56,8 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
     <div className={styles.wrap}>
       <div className={styles.blob1} />
       <div className={styles.blob2} />
+      <div className={styles.blob3} />
+      <div className={styles.blob4} />
 
       <div className={styles.card} style={{ maxWidth: 460 }}>
         <h1 className={styles.title}>Створіть акаунт</h1>
@@ -120,23 +118,6 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className={styles.checkRow} style={{ marginBottom: 16 }}>
-            <input
-              type="checkbox"
-              id="agreeTerms"
-              name="agreeTerms"
-              checked={form.agreeTerms}
-              onChange={handleChange}
-              style={{ accentColor: 'var(--pk1)' }}
-            />
-            <label htmlFor="agreeTerms" style={{ fontSize: 13, color: 'var(--text2)' }}>
-              Я погоджуюсь з{' '}
-              <span style={{ color: 'var(--pk1)', fontWeight: 600, cursor: 'pointer' }}>
-                умовами використання
-              </span>
-            </label>
           </div>
 
           {error && (

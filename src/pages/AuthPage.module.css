@@ -1,6 +1,7 @@
+/* ── Login & Register (matching pair) ─────────────────────── */
 .wrap {
   min-height: 100vh;
-  background: linear-gradient(135deg, #FFF0F5 0%, #fff 50%, #EAF7F0 100%);
+  background: #FAFAF8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8,18 +9,90 @@
   position: relative;
   overflow: hidden;
 }
+
+/* top-right peach — mirrors landing hero */
 .blob1 {
   position: absolute;
-  width: 300px; height: 300px;
-  background: #FFD6E7; border-radius: 50%;
-  top: -80px; left: -80px; opacity: 0.45;
+  width: 520px; height: 520px;
+  background: radial-gradient(circle, #FED7AA 0%, transparent 68%);
+  top: -120px; right: -100px;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.5;
   pointer-events: none;
 }
+
+/* bottom-left rose — mirrors landing hero */
 .blob2 {
   position: absolute;
-  width: 240px; height: 240px;
-  background: #C5E8D3; border-radius: 50%;
-  bottom: -60px; right: -60px; opacity: 0.4;
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, #FBB6CE 0%, transparent 68%);
+  bottom: -80px; left: -60px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+/* centre-left violet accent */
+.blob3 {
+  position: absolute;
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, #DDD6FE 0%, transparent 68%);
+  top: 30%; left: -140px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+/* top-left amber sparkle */
+.blob4 {
+  position: absolute;
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, #FDE68A 0%, transparent 68%);
+  top: 60px; left: 120px;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+/* ── Forgot-password variant blobs ────────────────────────── */
+
+/* dominant violet top-left — shifts mood */
+.blobFp1 {
+  position: absolute;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #DDD6FE 0%, transparent 68%);
+  top: -100px; left: -100px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+/* rose bottom-right */
+.blobFp2 {
+  position: absolute;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, #FBB6CE 0%, transparent 68%);
+  bottom: -80px; right: -60px;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* amber centre-right accent */
+.blobFp3 {
+  position: absolute;
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, #FDE68A 0%, transparent 68%);
+  top: 40%; right: 80px;
+  border-radius: 50%;
+  filter: blur(56px);
+  opacity: 0.3;
   pointer-events: none;
 }
 .card {
