@@ -19,15 +19,16 @@ const handleResponse = async (res) => {
 };
 
 // POST /api/auth/register
-export const register = async ({ firstName, lastName, email, password }) => {
+export const register = async ({ firstName, lastName, email, password, role }) => {
   const res = await fetch(`${BASE}/auth/register`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
-      first_name: firstName,
-      last_name: lastName,
+      first_name:  firstName,
+      last_name:   lastName,
       email,
       password,
+      system_role: role === 'admin' ? 'admin' : 'volunteer',
     }),
   });
   return handleResponse(res); // { token, user }

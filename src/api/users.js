@@ -34,3 +34,29 @@ export const fetchUserProjects = async (userId) => {
   const res = await fetch(`${BASE}/users/${userId}/projects`, { headers: headers() });
   return handleResponse(res);
 };
+
+// GET /api/users/:id/team
+export const fetchUserTeam = async (userId) => {
+  const res = await fetch(`${BASE}/users/${userId}/team`, { headers: headers() });
+  return handleResponse(res);
+};
+
+// POST /api/users/me/team  { member_id }
+export const addTeamMember = async (memberId) => {
+  const res = await fetch(`${BASE}/users/me/team`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ member_id: memberId }),
+  });
+  return handleResponse(res);
+};
+
+// DELETE /api/users/me/team/:memberId
+export const removeTeamMember = async (memberId) => {
+  const res = await fetch(`${BASE}/users/me/team/${memberId}`, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  if (res.status === 204) return;
+  return handleResponse(res);
+};

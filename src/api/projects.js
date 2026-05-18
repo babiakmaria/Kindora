@@ -28,7 +28,7 @@ const MEMBER_COLORS = ['#FF6B9D', '#4CAF7D', '#F59E0B', '#8B5CF6', '#06B6D4'];
 
 export const mapProject = (p, currentUserId) => ({
   id:           p.id,
-  icon:         p.icon        || '🌿',
+  icon:         p.icon        || 'Leaf',
   iconBg:       p.icon_bg     || '#EAF7F0',
   title:        p.title,
   desc:         p.description || '',
@@ -41,10 +41,16 @@ export const mapProject = (p, currentUserId) => ({
   due:          p.end_date
     ? new Date(p.end_date).toLocaleDateString('uk-UA', { month: 'short', day: 'numeric' })
     : 'TBD',
-  joined:       currentUserId && p.created_by === currentUserId,
-  createdBy:    p.created_by,
-  startDate:    p.start_date,
-  endDate:      p.end_date,
+  // is_member comes from the server when the request was authenticated;
+  // fall back to created_by check for any unauthenticated responses
+  joined:        p.is_member ?? (currentUserId != null && p.created_by === currentUserId),
+  createdBy:     p.created_by,
+  tags:          Array.isArray(p.tags) ? p.tags : [],
+  startDate:     p.start_date,
+  endDate:       p.end_date,
+  activityCount: Number(p.activity_count) || 0,
+  totalTasks:    Number(p.total_tasks)    || 0,
+  createdAt:     p.created_at || null,
 });
 
 // GET /api/projects
@@ -70,6 +76,35 @@ export const updateProject = async (projectId, data) => {
     headers: headers(),
     body: JSON.stringify(data),
   });
+  return handleResponse(res);
+};
+
+// DELETE /api/projects/:id
+export const deleteProject = async (projectId) => {
+  const res = await fetch(`${BASE}/projects/${projectId}`, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  return handleResponse(res);
+};
+
+// POST /api/projects/:id/join
+export const joinProject = async (projectId) => {
+  const res = await fetch(`${BASE}/projects/${projectId}/join`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({}),
+  });
+  return handleResponse(res);
+};
+
+// DELETE /api/projects/:id/leave
+export const leaveProject = async (projectId) => {
+  const res = await fetch(`${BASE}/projects/${projectId}/leave`, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  if (res.status === 204) return;
   return handleResponse(res);
 };
 

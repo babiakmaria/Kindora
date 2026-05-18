@@ -7,7 +7,7 @@ const createProjectSchema = {
     properties: {
       title:       { type: 'string', minLength: 3, maxLength: 255 },
       description: { type: 'string' },
-      icon:        { type: 'string', maxLength: 10 },
+      icon:        { type: 'string', maxLength: 50 },
       icon_bg:     { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
       category_id: { type: 'integer' },
       start_date:  { type: 'string', format: 'date' },
@@ -27,7 +27,7 @@ const updateProjectSchema = {
       description: { type: 'string' },
       status:      { type: 'string', enum: ['new', 'active', 'in_progress', 'completed', 'archived'] },
       progress:    { type: 'integer', minimum: 0, maximum: 100 },
-      icon:        { type: 'string', maxLength: 10 },
+      icon:        { type: 'string', maxLength: 50 },
       icon_bg:     { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
       start_date:  { type: 'string', format: 'date' },
       end_date:    { type: 'string', format: 'date' },

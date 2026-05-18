@@ -42,6 +42,7 @@ fastify.register(require('./routes/tags'),          { prefix: '/api/tags' })
 fastify.register(require('./routes/categories'),    { prefix: '/api/categories' })
 fastify.register(require('./routes/applications'),  { prefix: '/api/applications' })
 fastify.register(require('./routes/notifications'), { prefix: '/api/notifications' })
+fastify.register(require('./routes/analytics'),    { prefix: '/api/analytics' })
 
 fastify.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 

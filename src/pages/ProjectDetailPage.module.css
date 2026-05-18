@@ -167,23 +167,87 @@
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
+  flex-shrink: 0;
 }
-.tagAdd:hover {
+.tagAdd:hover,
+.tagAddActive {
   background: var(--pk3);
   border-color: var(--pk1);
+  border-style: solid;
 }
 
-.tagInput {
-  padding: 3px 10px;
+/* Wrapper keeps popup positioned relative to the + button */
+.tagPickerWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Tag picker popup */
+.tagPopup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 120;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rad);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.13);
+  width: 280px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 10px 0 8px;
+  animation: popupIn 0.14s ease;
+}
+
+.tagGroup {
+  padding: 0 12px 6px;
+}
+.tagGroup + .tagGroup {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.tagGroupLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.tagGroupList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tagOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
   border-radius: 20px;
-  border: 1.5px solid var(--pk1);
-  background: var(--pk3);
+  border: 1.5px solid var(--border);
+  background: var(--neu);
+  color: var(--text2);
   font-size: 11px;
   font-weight: 600;
-  color: var(--pk1);
-  outline: none;
-  width: 110px;
+  cursor: pointer;
   font-family: inherit;
+  transition: all 0.13s;
+  line-height: 1.4;
+}
+.tagOption:hover {
+  border-color: var(--pk2);
+  color: var(--pk1);
+  background: var(--pk3);
+}
+.tagOptionActive {
+  background: var(--pk3);
+  border-color: var(--pk1);
+  color: var(--pk1);
 }
 
 /* Progress in header */
@@ -740,10 +804,23 @@
   margin-bottom: 3px;
 }
 
+.daySummary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
 .timeBadge {
   font-size: 9px;
   font-weight: 700;
   color: var(--text3);
+}
+
+.priceBadge {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gr1);
 }
 
 /* Selected day highlight */
@@ -883,12 +960,28 @@
   white-space: nowrap;
 }
 
+.detailMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .detailTime {
   font-size: 12px;
   font-weight: 800;
   color: var(--pk1);
-  flex-shrink: 0;
   background: var(--pk3);
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+
+.detailPrice {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gr1);
+  background: #EAF7F0;
   border-radius: 20px;
   padding: 3px 9px;
 }
@@ -1075,6 +1168,59 @@
   border-radius: 20px;
   padding: 1px 7px;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.todoPriceTag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #059669;
+  background: #ECFDF5;
+  border-radius: 20px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 1px solid #A7F3D0;
+}
+
+/* Price input row used in add-form and time-tracking popup */
+.priceInputRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.priceCurrency {
+  font-size: 14px;
+  font-weight: 700;
+  color: #059669;
+  flex-shrink: 0;
+}
+
+.priceInput {
+  flex: 1;
+  padding: 8px 11px;
+  border-radius: var(--radsm);
+  border: 1.5px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text1);
+  background: #fff;
+  outline: none;
+  font-family: inherit;
+  min-width: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.priceInput:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+}
+.priceInput::placeholder { color: var(--text3); font-weight: 400; }
+
+.priceUnit {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
   flex-shrink: 0;
 }
 
@@ -1498,4 +1644,71 @@
 .todoDisabled {
   pointer-events: none;
   opacity: 0.75;
+}
+
+/* ── Delete confirmation dialog ─────────────────────────── */
+.deleteConfirmCard {
+  background: #fff;
+  border-radius: var(--rad);
+  padding: 28px 24px 22px;
+  width: 320px;
+  max-width: 100%;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+  border: 1.5px solid #FECDD3;
+  animation: formSlideIn 0.17s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.deleteConfirmIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #FFF1F2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.deleteConfirmTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text1);
+  letter-spacing: -0.3px;
+}
+
+.deleteConfirmSub {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.deleteConfirmActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.deleteConfirmBtn {
+  padding: 8px 20px;
+  border-radius: var(--radpill);
+  border: none;
+  background: #E11D48;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.deleteConfirmBtn:hover {
+  background: #BE123C;
 }

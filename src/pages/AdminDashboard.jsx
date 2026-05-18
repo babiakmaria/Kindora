@@ -1,27 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminSidebar from '../components/layout/AdminSidebar';
 import Topbar from '../components/layout/Topbar';
 import StatCard from '../components/common/StatCard';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
+import SpendingChart from '../components/common/SpendingChart';
 import NewProjectModal from '../components/projects/NewProjectModal';
-import { PROJECTS, ADMIN_STATS, APPLICATIONS } from '../data/data';
 import styles from './AdminDashboard.module.css';
+import { ProjectIcon } from '../utils/projectIcon';
+import { fetchPlatformStats, fetchProjectsByCategory, fetchAnalyticsStats } from '../api/analytics';
 
-const BAR_DATA = [
-  { month: 'Жовт', h: 42 },
-  { month: 'Листоп', h: 58 },
-  { month: 'Груд', h: 75 },
-  { month: 'Січ', h: 62 },
-  { month: 'Лют', h: 88 },
-  { month: 'Бер', h: 100 },
-];
+const CATEGORY_COLORS = ['#4CAF7D', '#FF6B9D', '#F59E0B', '#8B5CF6', '#06B6D4', '#EF4444'];
+const CIRCUMFERENCE = 2 * Math.PI * 36; // ≈ 226.2
 
-const DONUT_CATEGORIES = [
-  { label: 'Довкілля', pct: 57, color: '#4CAF7D', dashArr: '82 144', offset: 0    },
-  { label: 'Освіта',   pct: 35, color: '#FF6B9D', dashArr: '50 144', offset: -82  },
-  { label: 'Соціальне',pct: 21, color: '#F59E0B', dashArr: '30 144', offset: -132 },
-];
+// Build donut segments from category data
+const buildDonutSegments = (categories) => {
+  const total = categories.reduce((s, c) => s + c.value, 0);
+  if (total === 0) return [];
+  let offset = 0;
+  return categories.map((cat, i) => {
+    const pct   = Math.round((cat.value / total) * 100);
+    const arc   = (cat.value / total) * CIRCUMFERENCE;
+    const seg   = { label: cat.label, pct, value: cat.value, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length], arc, offset };
+    offset += arc;
+    return seg;
+  });
+};
 
 const ProgressCell = ({ pct, color }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -32,21 +36,96 @@ const ProgressCell = ({ pct, color }) => (
   </div>
 );
 
+const TrendCell = ({ progress }) => {
+  if (progress >= 70) return <span style={{ color: '#4CAF7D', fontWeight: 700, fontSize: 16 }}>↑</span>;
+  if (progress <= 30) return <span style={{ color: '#EF4444', fontWeight: 700, fontSize: 16 }}>↓</span>;
+  return <span style={{ color: '#F59E0B', fontWeight: 700, fontSize: 16 }}>→</span>;
+};
+
 const AdminDashboard = ({ onNavigate, projects: projectsProp, onAddProject, currentUser, onLogout }) => {
-  const [tableProjects, setTableProjects] = useState(
-    projectsProp ? projectsProp.slice(0, 4) : PROJECTS.slice(0, 4)
-  );
-  const [applications, setApplications] = useState(APPLICATIONS);
-  const [isModalOpen,  setModalOpen]    = useState(false);
+  const [platformStats, setPlatformStats]   = useState(null);
+  const [categories,    setCategories]      = useState([]);
+  const [statsLoading,  setStatsLoading]    = useState(true);
+  const [isModalOpen,   setModalOpen]       = useState(false);
+
+  useEffect(() => {
+    setStatsLoading(true);
+    Promise.allSettled([
+      fetchPlatformStats(),
+      fetchProjectsByCategory(),
+      fetchAnalyticsStats(),
+    ]).then(([platformRes, catsRes, adminRes]) => {
+      // Platform stats (platform-wide numbers)
+      if (platformRes.status === 'fulfilled') {
+        setPlatformStats(platformRes.value);
+      } else if (adminRes.status === 'fulfilled') {
+        // Fall back to per-admin stats if platform endpoint isn't available yet
+        const s = adminRes.value;
+        setPlatformStats({
+          total_projects:        projects.length,
+          total_users:           s.totalVolunteers ?? 0,
+          pending_applications:  0,
+          completion_rate:       s.completedProjects
+            ? Math.round((s.completedProjects / Math.max(projects.length, 1)) * 100)
+            : 0,
+        });
+      }
+      // Categories for donut
+      if (catsRes.status === 'fulfilled') {
+        setCategories(catsRes.value.filter((c) => c.value > 0));
+      }
+    }).finally(() => setStatsLoading(false));
+  }, []);
 
   const handleAddProject = (newProject) => {
     if (onAddProject) onAddProject(newProject);
-    setTableProjects((prev) => [newProject, ...prev]);
   };
 
-  const handleApp = (id) => {
-    setApplications((prev) => prev.filter((a) => a.id !== id));
-  };
+  // Show only projects this admin created — consistent with the analytics stats
+  // which are already filtered by created_by on the backend
+  const projects = currentUser
+    ? (projectsProp || []).filter((p) => p.createdBy === currentUser.id)
+    : [];
+
+  const statCards = platformStats
+    ? [
+        {
+          label:    'Всього проєктів',
+          value:    platformStats.total_projects,
+          icon:     'Folder',
+          iconBg:   '#EAF7F0',
+          trend:    '',
+          trendDir: 'up',
+        },
+        {
+          label:    'Активні користувачі',
+          value:    platformStats.total_users,
+          icon:     'Users',
+          iconBg:   '#FFF0F6',
+          trend:    '',
+          trendDir: 'up',
+        },
+        {
+          label:    'Заявки на розгляді',
+          value:    platformStats.pending_applications,
+          icon:     'ClipboardList',
+          iconBg:   '#FFFBEA',
+          trend:    '',
+          trendDir: 'neutral',
+        },
+        {
+          label:    'Відсоток завершення',
+          value:    `${platformStats.completion_rate}%`,
+          icon:     'CheckCircle',
+          iconBg:   '#EAF7F0',
+          trend:    '',
+          trendDir: 'up',
+        },
+      ]
+    : [];
+
+  const donutSegments = buildDonutSegments(categories);
+  const totalProjects = platformStats?.total_projects ?? projects.length;
 
   return (
     <div className="app-layout">
@@ -64,39 +143,18 @@ const AdminDashboard = ({ onNavigate, projects: projectsProp, onAddProject, curr
 
           {/* Stats */}
           <div className="stat-row" style={{ marginBottom: 24 }}>
-            {ADMIN_STATS.map((s) => (
-              <StatCard key={s.label} {...s} />
-            ))}
+            {statsLoading
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="stat-card" style={{ opacity: 0.4, height: 80 }} />
+                ))
+              : statCards.map((s) => <StatCard key={s.label} {...s} />)
+            }
           </div>
 
           {/* Charts row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
 
-            {/* Bar chart */}
-            <div className="section-card">
-              <div className="section-head">
-                <div className="section-title">Активність проєктів (6 місяців)</div>
-              </div>
-              <div className={styles.barChart}>
-                {BAR_DATA.map((b) => (
-                  <div
-                    key={b.month}
-                    className={styles.bar}
-                    style={{
-                      height: `${b.h}%`,
-                      background:
-                        b.h === 100 ? 'var(--pk1)' :
-                        b.h >= 80   ? 'linear-gradient(180deg,var(--gr1),var(--pk1))' :
-                        b.h >= 60   ? 'var(--pk1)' :
-                        b.h >= 50   ? 'var(--pk2)' : 'var(--pk3)',
-                    }}
-                  />
-                ))}
-              </div>
-              <div className={styles.barLabels}>
-                {BAR_DATA.map((b) => <span key={b.month}>{b.month}</span>)}
-              </div>
-            </div>
+            <SpendingChart />
 
             {/* Donut chart */}
             <div className="section-card">
@@ -106,38 +164,45 @@ const AdminDashboard = ({ onNavigate, projects: projectsProp, onAddProject, curr
               <div className={styles.donutWrap}>
                 <svg width="100" height="100" viewBox="0 0 100 100">
                   <circle cx="50" cy="50" r="36" fill="none" stroke="#F3F4F6" strokeWidth="14" />
-                  {DONUT_CATEGORIES.map((c) => (
+                  {donutSegments.map((seg) => (
                     <circle
-                      key={c.label}
+                      key={seg.label}
                       cx="50" cy="50" r="36"
                       fill="none"
-                      stroke={c.color}
+                      stroke={seg.color}
                       strokeWidth="14"
-                      strokeDasharray={c.dashArr}
-                      strokeDashoffset={c.offset}
+                      strokeDasharray={`${seg.arc} ${CIRCUMFERENCE}`}
+                      strokeDashoffset={-seg.offset}
                       strokeLinecap="round"
+                      transform="rotate(-90 50 50)"
                     />
                   ))}
-                  <text x="50" y="47" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1A1A2E">24</text>
+                  <text x="50" y="47" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1A1A2E">
+                    {totalProjects}
+                  </text>
                   <text x="50" y="59" textAnchor="middle" fontSize="8" fill="#6B7280">проєктів</text>
                 </svg>
                 <div className={styles.legend}>
-                  {DONUT_CATEGORIES.map((c) => (
-                    <div key={c.label} className={styles.legendItem}>
-                      <span className={styles.legendDot} style={{ background: c.color }} />
-                      {c.label} ({c.pct}%)
+                  {donutSegments.map((seg) => (
+                    <div key={seg.label} className={styles.legendItem}>
+                      <span className={styles.legendDot} style={{ background: seg.color }} />
+                      {seg.label} ({seg.pct}%)
                     </div>
                   ))}
+                  {donutSegments.length === 0 && !statsLoading && (
+                    <span style={{ fontSize: 12, color: '#9CA3AF' }}>Немає даних</span>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Project management table */}
+          {/* Projects detail table */}
           <div className="section-card">
             <div className="section-head">
-              <div className="section-title">Управління проєктами</div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="section-title">Деталі проєктів</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#9CA3AF' }}>{projects.length} проєктів</span>
                 <Button variant="ghost" sm>Фільтр</Button>
                 <Button variant="primary" sm onClick={() => setModalOpen(true)}>+ Новий</Button>
               </div>
@@ -147,76 +212,56 @@ const AdminDashboard = ({ onNavigate, projects: projectsProp, onAddProject, curr
                 <thead>
                   <tr>
                     <th>Проєкт</th>
+                    <th>Категорія</th>
                     <th>Статус</th>
-                    <th>Учасники</th>
+                    <th>Волонтери</th>
+                    <th>Активності</th>
                     <th>Прогрес</th>
-                    <th>Термін</th>
-                    <th>Дія</th>
+                    <th>Тренд</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tableProjects.map((p) => (
-                    <tr key={p.id}>
-                      <td className={styles.tdName}>{p.icon} {p.title}</td>
+                  {projects.map((p) => (
+                    <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => onNavigate('project-detail', p)}>
+                      <td className={styles.tdName}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ background: p.iconBg, width: 26, height: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <ProjectIcon name={p.icon} bg={p.iconBg} size={14} />
+                          </span>
+                          {p.title}
+                        </span>
+                      </td>
+                      <td style={{ color: '#6B7280', fontSize: 12 }}>{p.category || '—'}</td>
                       <td><Badge status={p.status} dot>{p.statusLabel}</Badge></td>
-                      <td>{p.members}</td>
+                      <td style={{ textAlign: 'center' }}>{p.members}</td>
+                      <td style={{ textAlign: 'center' }}>{p.activityCount}</td>
                       <td style={{ minWidth: 140 }}>
                         <ProgressCell
                           pct={p.progress}
                           color={
                             p.status === 'completed'   ? '#9CA3AF' :
-                            p.status === 'in-progress' ? '#F59E0B' :
+                            p.status === 'in_progress' ? '#F59E0B' :
                             p.status === 'new'         ? '#FF6B9D' : '#4CAF7D'
                           }
                         />
                       </td>
-                      <td>{p.due}</td>
-                      <td>
-                        <Button
-                          variant={p.status === 'active' && p.progress >= 90 ? 'secondary' : 'ghost'}
-                          sm
-                        >
-                          {p.status === 'active' && p.progress >= 90 ? 'Завершити' : 'Керувати'}
-                        </Button>
+                      <td style={{ textAlign: 'center' }}>
+                        <TrendCell progress={p.progress} />
                       </td>
                     </tr>
                   ))}
+                  {projects.length === 0 && (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', color: '#9CA3AF', padding: 32 }}>
+                        Проєкти відсутні
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Pending applications */}
-          {applications.length > 0 && (
-            <div className="section-card" style={{ marginTop: 16 }}>
-              <div className="section-head">
-                <div className="section-title">Заявки учасників на розгляді</div>
-                <span className="badge badge-amber">{applications.length} очікують</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {applications.map((app) => (
-                  <div key={app.id} className={styles.appRow}>
-                    <div
-                      className="avatar"
-                      style={{ background: app.gradient, width: 36, height: 36, fontSize: 12 }}
-                    >
-                      {app.initials}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{app.name}</p>
-                      <p style={{ fontSize: 11, color: 'var(--text3)' }}>
-                        Подав заявку на: {app.project} · {app.time}
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <Button variant="secondary" sm onClick={() => handleApp(app.id)}>✓ Прийняти</Button>
-                      <Button variant="ghost"     sm onClick={() => handleApp(app.id)}>✕ Відхилити</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -225,7 +270,7 @@ const AdminDashboard = ({ onNavigate, projects: projectsProp, onAddProject, curr
         isOpen={isModalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleAddProject}
-        currentUser="Марія Чен"
+        currentUser={currentUser?.name || 'Адмін'}
       />
     </div>
   );

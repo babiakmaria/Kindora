@@ -3,6 +3,7 @@ import Badge from '../common/Badge';
 import ProgressBar from '../common/ProgressBar';
 import Button from '../common/Button';
 import styles from './ProjectCard.module.css';
+import { ProjectIcon } from '../../utils/projectIcon';
 
 const MemberStack = ({ colors, total }) => (
   <div className={styles.memberStack}>
@@ -34,7 +35,7 @@ const ProjectCard = ({ project, view = 'grid', onToggleJoin, onNavigate }) => {
   if (isList) {
     return (
       <div className={`${styles.card} ${styles.listCard}`} onClick={handleOpen} style={{ cursor: 'pointer' }}>
-        <div className={styles.iconBox} style={{ background: iconBg }}>{icon}</div>
+        <div className={styles.iconBox} style={{ background: iconBg }}><ProjectIcon name={icon} bg={iconBg} size={20} /></div>
 
         <div className={styles.body}>
           <div className={styles.topRow}>
@@ -71,7 +72,7 @@ const ProjectCard = ({ project, view = 'grid', onToggleJoin, onNavigate }) => {
   return (
     <div className={styles.card} onClick={handleOpen} style={{ cursor: 'pointer' }}>
       <div className={styles.cardTop}>
-        <div className={styles.iconBox} style={{ background: iconBg, marginBottom: 0 }}>{icon}</div>
+        <div className={styles.iconBox} style={{ background: iconBg, marginBottom: 0 }}><ProjectIcon name={icon} bg={iconBg} size={20} /></div>
         <Badge status={status} dot>{statusLabel}</Badge>
       </div>
 

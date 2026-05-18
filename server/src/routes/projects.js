@@ -49,8 +49,10 @@ async function projectRoutes(fastify) {
 
   // ── GET /api/projects ──────────────────────────────────────
   // Фільтри: status, category (slug), tag (slug), search
-  fastify.get('/', async (req) => {
+  // Optionally authenticated: if token present, adds is_member field
+  fastify.get('/', { onRequest: [fastify.optionalAuth] }, async (req) => {
     const { status, category, tag, search } = req.query
+    const userId = req.user?.id ?? null
     const conditions = []
     const params = []
 
@@ -75,8 +77,21 @@ async function projectRoutes(fastify) {
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+
+    // When authenticated, compute is_member so the frontend knows which projects
+    // the current user belongs to (covers creator AND joined-via-explore cases)
+    params.push(userId)
+    const memberExpr = `EXISTS (
+      SELECT 1 FROM project_members pm
+      WHERE pm.project_id = ps.id
+        AND pm.user_id    = $${params.length}
+        AND pm.is_active  = TRUE
+    ) AS is_member`
+
     const { rows } = await db.query(
-      `SELECT ps.* FROM project_summary ps ${tagJoin} ${where} ORDER BY ps.created_at DESC`,
+      `SELECT ps.*, ${memberExpr}
+       FROM project_summary ps ${tagJoin} ${where}
+       ORDER BY ps.created_at DESC`,
       params,
     )
     return rows
@@ -92,28 +107,42 @@ async function projectRoutes(fastify) {
   // ── POST /api/projects ─────────────────────────────────────
   fastify.post('/', { onRequest: [fastify.authenticate], schema: createProjectSchema }, async (req, reply) => {
     const { title, description, icon, icon_bg, category_id, start_date, end_date, tag_ids = [] } = req.body
+    const userId = req.user.id
 
-    const { rows } = await db.query(
+    const { rows: inserted } = await db.query(
       `INSERT INTO projects (title, description, icon, icon_bg, category_id, start_date, end_date, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [title, description, icon, icon_bg, category_id, start_date, end_date, req.user.id],
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [title, description, icon, icon_bg, category_id, start_date, end_date, userId],
     )
-    const project = rows[0]
+    const projectId = inserted[0].id
 
+    // Creator is automatically an owner-member
     await db.query(
       `INSERT INTO project_members (project_id, user_id, role) VALUES ($1, $2, 'owner')`,
-      [project.id, req.user.id],
+      [projectId, userId],
     )
 
     if (tag_ids.length) {
       const tagValues = tag_ids.map((_, i) => `($1, $${i + 2})`).join(', ')
       await db.query(
         `INSERT INTO project_tags (project_id, tag_id) VALUES ${tagValues} ON CONFLICT DO NOTHING`,
-        [project.id, ...tag_ids],
+        [projectId, ...tag_ids],
       )
     }
 
-    return reply.code(201).send(project)
+    // Return the full project_summary row (includes category_name, progress, member count, etc.)
+    // plus is_member = true since we just added the creator to project_members
+    const { rows } = await db.query(
+      `SELECT ps.*,
+              EXISTS (
+                SELECT 1 FROM project_members pm
+                WHERE pm.project_id = ps.id AND pm.user_id = $2 AND pm.is_active = TRUE
+              ) AS is_member
+       FROM project_summary ps WHERE ps.id = $1`,
+      [projectId, userId],
+    )
+
+    return reply.code(201).send(rows[0])
   })
 
   // ── PATCH /api/projects/:id ────────────────────────────────
@@ -144,7 +173,10 @@ async function projectRoutes(fastify) {
   })
 
   // ── POST /api/projects/:id/join ────────────────────────────
-  fastify.post('/:id/join', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+  fastify.post('/:id/join', {
+    onRequest: [fastify.authenticate],
+    schema: { body: { type: 'object', additionalProperties: true } },
+  }, async (req, reply) => {
     const { rows } = await db.query(
       `INSERT INTO project_members (project_id, user_id)
        VALUES ($1, $2)
@@ -163,6 +195,69 @@ async function projectRoutes(fastify) {
       [req.params.id, req.user.id],
     )
     await notifyMembers(req.params.id, req.user.id, 'user_left', {})
+    return reply.code(204).send()
+  })
+
+  // ── POST /api/projects/:id/members ────────────────────────
+  // Owner or admin adds an existing user to the project.
+  fastify.post('/:id/members', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+    const { user_id } = req.body ?? {}
+    if (!user_id) return reply.badRequest('user_id обовʼязковий')
+
+    // Only project owner or system admin can add members
+    const { rows: ownerCheck } = await db.query(
+      `SELECT 1 FROM project_members
+       WHERE project_id = $1 AND user_id = $2 AND role = 'owner' AND is_active = TRUE`,
+      [req.params.id, req.user.id],
+    )
+    if (!ownerCheck.length && req.user.role !== 'admin') {
+      return reply.forbidden('Тільки власник проєкту може додавати учасників')
+    }
+
+    // Verify the target user exists
+    const { rows: userCheck } = await db.query(
+      `SELECT id FROM users WHERE id = $1 AND is_active = TRUE`,
+      [user_id],
+    )
+    if (!userCheck.length) return reply.notFound('Користувача не знайдено')
+
+    // Upsert: re-activate if they previously left
+    await db.query(
+      `INSERT INTO project_members (project_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (project_id, user_id) DO UPDATE SET is_active = TRUE`,
+      [req.params.id, user_id],
+    )
+
+    // Return the full member row so the frontend can render the avatar immediately
+    const { rows } = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.avatar_color, u.profile_role,
+              pm.role, pm.hours_contributed, pm.tasks_completed, pm.joined_at
+       FROM project_members pm
+       JOIN users u ON u.id = pm.user_id
+       WHERE pm.project_id = $1 AND pm.user_id = $2`,
+      [req.params.id, user_id],
+    )
+    return reply.code(201).send(rows[0])
+  })
+
+  // ── DELETE /api/projects/:id/members/:userId ───────────────
+  // Owner or admin removes a user from the project.
+  fastify.delete('/:id/members/:userId', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+    const { rows: ownerCheck } = await db.query(
+      `SELECT 1 FROM project_members
+       WHERE project_id = $1 AND user_id = $2 AND role = 'owner' AND is_active = TRUE`,
+      [req.params.id, req.user.id],
+    )
+    if (!ownerCheck.length && req.user.role !== 'admin') {
+      return reply.forbidden('Тільки власник проєкту може видаляти учасників')
+    }
+
+    await db.query(
+      `UPDATE project_members SET is_active = FALSE
+       WHERE project_id = $1 AND user_id = $2`,
+      [req.params.id, req.params.userId],
+    )
     return reply.code(204).send()
   })
 
@@ -207,7 +302,7 @@ async function projectRoutes(fastify) {
 
   // ── POST /api/projects/:id/tasks ──────────────────────────
   fastify.post('/:id/tasks', { onRequest: [fastify.authenticate] }, async (req, reply) => {
-    const { title, description, assignee_id, priority, due_date } = req.body
+    const { title, description, assignee_id, priority, due_date, price } = req.body
 
     if (!title?.trim()) return reply.badRequest('title обовʼязковий')
 
@@ -226,11 +321,13 @@ async function projectRoutes(fastify) {
       if (!(await validateAssignee(req.params.id, assignee_id, reply))) return
     }
 
+    const priceVal = price != null && parseFloat(price) > 0 ? parseFloat(price) : null
+
     // Insert and return full row with assignee/creator names via join
     const insertRes = await db.query(
-      `INSERT INTO tasks (project_id, created_by, assignee_id, title, description, priority, due_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [req.params.id, req.user.id, assignee_id ?? null, title.trim(), description ?? null, priority ?? 'medium', due_date ?? null],
+      `INSERT INTO tasks (project_id, created_by, assignee_id, title, description, priority, due_date, price)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [req.params.id, req.user.id, assignee_id ?? null, title.trim(), description ?? null, priority ?? 'medium', due_date ?? null, priceVal],
     )
     const { rows } = await db.query(
       `SELECT t.*,
@@ -267,7 +364,7 @@ async function projectRoutes(fastify) {
     // Pull out hours_logged before filtering — it's not a task column
     const { hours_logged: rawHours, ...bodyRest } = req.body ?? {}
 
-    const ALLOWED = ['title', 'description', 'assignee_id', 'priority', 'is_done', 'due_date']
+    const ALLOWED = ['title', 'description', 'assignee_id', 'priority', 'is_done', 'due_date', 'price']
     const fields  = Object.fromEntries(Object.entries(bodyRest).filter(([k]) => ALLOWED.includes(k)))
     const keys    = Object.keys(fields)
     if (!keys.length && rawHours === undefined) return reply.badRequest('Немає допустимих полів')
@@ -306,14 +403,23 @@ async function projectRoutes(fastify) {
     )
     if (!current[0]) return reply.notFound('Задачу не знайдено')
     const wasNotDone = !current[0].is_done
+    const transitioningToDone   = fields.is_done === true  && wasNotDone
+    const transitioningToUndone = fields.is_done === false && !wasNotDone
+
+    // Stamp completed_at alongside is_done so the calendar has a real timestamp
+    if (transitioningToDone)   fields.completed_at = new Date().toISOString()
+    if (transitioningToUndone) fields.completed_at = null
+
+    // Rebuild keys/sets after possibly adding completed_at
+    const finalKeys = Object.keys(fields)
 
     // ── Update task (skip DB call if no task fields to change) ──
     let updatedTask
-    if (keys.length) {
-      const sets = keys.map((k, i) => `${k} = $${i + 2}`)
+    if (finalKeys.length) {
+      const sets = finalKeys.map((k, i) => `${k} = $${i + 2}`)
       const { rows } = await db.query(
         `UPDATE tasks SET ${sets.join(', ')}
-         WHERE id = $1 AND project_id = $${keys.length + 2}
+         WHERE id = $1 AND project_id = $${finalKeys.length + 2}
          RETURNING *`,
         [taskId, ...Object.values(fields), projectId],
       )
@@ -333,7 +439,6 @@ async function projectRoutes(fastify) {
     }
 
     // ── Time tracking: only when transitioning from not-done → done ──
-    const transitioningToDone = fields.is_done === true && wasNotDone
     if (transitioningToDone) {
       // Determine whose counters to update: assignee or the person completing it
       const targetUserId = updatedTask.assignee_id || req.user.id
@@ -470,6 +575,81 @@ async function projectRoutes(fastify) {
     )
 
     return reply.code(204).send()
+  })
+
+  // ── GET /api/projects/:id/calendar?year=YYYY&month=M ─────
+  // Returns completed-task activity grouped by calendar day.
+  //
+  // Response shape:
+  //   { "YYYY-MM-DD": [ { userId, initials, name, color, tasks, totalMinutes } ] }
+  //
+  // Each array element represents one unique user who completed tasks that day.
+  // tasks[] contains the task titles; totalMinutes is the sum of logged_hours*60
+  // for that user on that date (0 when no time was tracked).
+  //
+  // The query runs a single GROUP BY aggregation — no per-day loops on the server.
+  fastify.get('/:id/calendar', async (req, reply) => {
+    const projectId = req.params.id
+    const year  = parseInt(req.query.year,  10) || new Date().getFullYear()
+    const month = parseInt(req.query.month, 10) || (new Date().getMonth() + 1) // 1-based
+
+    if (month < 1 || month > 12) return reply.badRequest('month має бути від 1 до 12')
+
+    // Date range for the requested month (inclusive)
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const endDate   = new Date(year, month, 0).toISOString().slice(0, 10) // last day of month
+
+    const { rows } = await db.query(
+      `SELECT
+         TO_CHAR(t.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day,
+         u.id                                                       AS user_id,
+         u.first_name,
+         u.last_name,
+         u.avatar_color,
+         ARRAY_AGG(t.title ORDER BY t.completed_at)                AS task_titles,
+         COALESCE(SUM(
+           CASE WHEN t.logged_hours IS NOT NULL
+                THEN ROUND(t.logged_hours * 60)::INT
+                ELSE 0
+           END
+         ), 0)                                                      AS total_minutes,
+         COALESCE(SUM(t.price), 0)                                  AS total_price
+       FROM tasks t
+       JOIN users u ON u.id = COALESCE(t.assignee_id, t.created_by)
+       WHERE t.project_id  = $1
+         AND t.is_done     = TRUE
+         AND t.completed_at IS NOT NULL
+         AND t.completed_at >= $2::DATE
+         AND t.completed_at <  ($3::DATE + INTERVAL '1 day')
+       GROUP BY day, u.id, u.first_name, u.last_name, u.avatar_color
+       ORDER BY day, total_minutes DESC`,
+      [projectId, startDate, endDate],
+    )
+
+    // Reshape flat rows into the map the frontend expects:
+    // { 'YYYY-MM-DD': [ { userId, initials, name, color, tasks, totalMinutes } ] }
+    const calendar = {}
+    for (const row of rows) {
+      const initials = (
+        ((row.first_name || '')[0] || '') +
+        ((row.last_name  || '')[0] || '')
+      ).toUpperCase() || '??'
+
+      const entry = {
+        userId:       row.user_id,
+        initials,
+        name:         `${row.first_name || ''} ${row.last_name || ''}`.trim(),
+        color:        row.avatar_color || '#6B7280',
+        tasks:        row.task_titles,
+        totalMinutes: Number(row.total_minutes),
+        totalPrice:   Number(row.total_price),
+      }
+
+      if (!calendar[row.day]) calendar[row.day] = []
+      calendar[row.day].push(entry)
+    }
+
+    return calendar
   })
 
   // ── GET /api/projects/:id/tags ────────────────────────────

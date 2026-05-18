@@ -1,20 +1,22 @@
 import React from 'react';
 
 const COLORS = {
-  active:      'badge-green',
-  new:         'badge-pink',
+  active:        'badge-green',
+  new:           'badge-pink',
   'in-progress': 'badge-amber',
-  completed:   'badge-gray',
-  green:       'badge-green',
-  pink:        'badge-pink',
-  amber:       'badge-amber',
-  gray:        'badge-gray',
+  in_progress:   'badge-amber',
+  completed:     'badge-gray',
+  green:         'badge-green',
+  pink:          'badge-pink',
+  amber:         'badge-amber',
+  gray:          'badge-gray',
 };
 
 const DOT_COLORS = {
   active:        '#4CAF7D',
   new:           '#FF6B9D',
   'in-progress': '#F59E0B',
+  in_progress:   '#F59E0B',
   completed:     '#9CA3AF',
 };
 

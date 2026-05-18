@@ -3,25 +3,14 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import styles from './NewProjectModal.module.css';
 import { fetchCategories } from '../../api/projects';
-
-const ICON_OPTIONS = [
-  '🌳', '📚', '🍳', '♻️', '✏️', '🏠', '🐝', '🎬',
-  '🌿', '⚡', '🎨', '📖', '🌍', '🤝', '📊', '🦋',
-];
-
-const ICON_BG_MAP = {
-  '🌳': '#EAF7F0', '📚': '#FFF0F5', '🍳': '#FFF8E1', '♻️': '#EAF7F0',
-  '✏️': '#FFF0F5', '🏠': '#EAF7F0', '🐝': '#FFF0F5', '🎬': '#EAF7F0',
-  '🌿': '#EAF7F0', '⚡': '#FFF8E1', '🎨': '#FFF0F5', '📖': '#FFF8E1',
-  '🌍': '#EAF7F0', '🤝': '#FFF0F5', '📊': '#F0F4FF', '🦋': '#FFF8E1',
-};
+import { ICON_OPTIONS, ICON_BG_MAP, ProjectIcon } from '../../utils/projectIcon';
 
 const EMPTY_FORM = {
   title:       '',
   description: '',
   startDate:   '',
   endDate:     '',
-  icon:        '🌿',
+  icon:        'Leaf',
   iconBg:      '#EAF7F0',
   categoryId:  '',
 };
@@ -78,8 +67,8 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser }) => {
     setApiError('');
   };
 
-  const handleIconSelect = (icon) => {
-    setForm((prev) => ({ ...prev, icon, iconBg: ICON_BG_MAP[icon] || '#EAF7F0' }));
+  const handleIconSelect = (iconName) => {
+    setForm((prev) => ({ ...prev, icon: iconName, iconBg: ICON_BG_MAP[iconName] || '#EAF7F0' }));
   };
 
   const handleSubmit = async (e) => {
@@ -128,16 +117,16 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser }) => {
         <div className={styles.field}>
           <label className={styles.label}>Іконка проєкту</label>
           <div className={styles.iconGrid}>
-            {ICON_OPTIONS.map((icon) => (
+            {ICON_OPTIONS.map(({ name, bg }) => (
               <button
-                key={icon}
+                key={name}
                 type="button"
-                className={`${styles.iconBtn} ${form.icon === icon ? styles.iconBtnSelected : ''}`}
-                style={form.icon === icon ? { background: ICON_BG_MAP[icon] } : {}}
-                onClick={() => handleIconSelect(icon)}
-                aria-label={`Обрати іконку ${icon}`}
+                className={`${styles.iconBtn} ${form.icon === name ? styles.iconBtnSelected : ''}`}
+                style={{ background: form.icon === name ? bg : undefined }}
+                onClick={() => handleIconSelect(name)}
+                aria-label={`Обрати іконку ${name}`}
               >
-                {icon}
+                <ProjectIcon name={name} bg={form.icon === name ? bg : '#F3F4F6'} size={18} />
               </button>
             ))}
           </div>
@@ -257,7 +246,7 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser }) => {
         {/* Preview */}
         <div className={styles.preview}>
           <div className={styles.previewIcon} style={{ background: ICON_BG_MAP[form.icon] || '#EAF7F0' }}>
-            {form.icon}
+            <ProjectIcon name={form.icon} bg={ICON_BG_MAP[form.icon] || '#EAF7F0'} size={20} />
           </div>
           <div>
             <p className={styles.previewTitle}>{form.title || 'Назва вашого проєкту'}</p>

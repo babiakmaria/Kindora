@@ -3,6 +3,7 @@ import Sidebar      from '../components/layout/Sidebar';
 import Badge        from '../components/common/Badge';
 import { PROJECTS } from '../data/data';
 import styles       from './UserProfilePage.module.css';
+import { ProjectIcon } from '../utils/projectIcon';
 
 // hardcoded profiles for each contributor, key is their id
 const USER_PROFILES = {
@@ -103,7 +104,7 @@ const ProjectItem = ({ project, onNavigate }) => {
       onKeyDown={(e) => { if (fullProject && (e.key === 'Enter' || e.key === ' ')) handleClick(); }}
     >
       <span className={styles.projectIcon} style={{ background: project.iconBg }}>
-        {project.icon}
+        <ProjectIcon name={project.icon} bg={project.iconBg} size={18} />
       </span>
       <div className={styles.projectBody}>
         <div className={styles.projectTop}>

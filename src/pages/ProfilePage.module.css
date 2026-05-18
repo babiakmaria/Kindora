@@ -174,3 +174,175 @@
   background: #F8F9FA;
   border-radius: 10px;
 }
+
+/* Team section */
+.teamEditBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radsm);
+  border: 1.5px solid var(--border);
+  background: none;
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.teamEditBtn:hover {
+  border-color: var(--pk1);
+  color: var(--pk1);
+  background: var(--pk3);
+}
+.teamEditBtnActive {
+  border-color: var(--pk1);
+  color: var(--pk1);
+  background: var(--pk3);
+}
+
+.teamList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.teamMember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radsm);
+  background: var(--neu);
+  transition: background 0.12s;
+}
+
+.teamAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.teamMemberName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text1);
+  flex: 1;
+}
+
+.teamRemoveBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.6;
+  transition: opacity 0.12s, color 0.12s;
+}
+.teamRemoveBtn:hover {
+  opacity: 1;
+  color: #E11D48;
+}
+
+/* Search panel inside the team card */
+.teamSearchPanel {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.teamSearchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radsm);
+  background: #fff;
+  padding: 0 8px;
+  gap: 6px;
+  transition: border-color 0.15s;
+}
+.teamSearchWrap:focus-within {
+  border-color: var(--pk1);
+}
+
+.teamSearchIcon {
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+.teamSearchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text1);
+  padding: 8px 0;
+  background: transparent;
+}
+.teamSearchInput::placeholder { color: var(--text3); }
+
+.teamSearchClear {
+  background: none;
+  border: none;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.teamSearchClear:hover { color: var(--text1); }
+
+.teamSearchResults {
+  margin-top: 6px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radsm);
+  overflow: hidden;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.teamResultItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+  text-align: left;
+}
+.teamResultItem:hover { background: var(--neu); }
+.teamResultActive { background: var(--pk3); }
+.teamResultActive:hover { background: var(--pk3); }
+
+.teamSearchEmpty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text3);
+  text-align: center;
+}
+
+.teamResultAdd {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--pk1);
+  line-height: 1;
+}

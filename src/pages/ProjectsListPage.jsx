@@ -10,7 +10,7 @@ const STATUS_FILTERS = [
   { key: 'all',         label: 'Всі',        variant: 'pink'  },
   { key: 'active',      label: 'Активні',    variant: 'green', dot: '#4CAF7D' },
   { key: 'new',         label: 'Нові',       variant: 'pink',  dot: '#FF6B9D' },
-  { key: 'in-progress', label: 'В процесі',  variant: 'amber', dot: '#F59E0B' },
+  { key: 'in_progress', label: 'В процесі',  variant: 'amber', dot: '#F59E0B' },
   { key: 'completed',   label: 'Завершені',  variant: 'gray',  dot: '#9CA3AF' },
 ];
 
@@ -77,7 +77,7 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
       .sort((a, b) => {
         if (sort === 'members')  return b.members  - a.members;
         if (sort === 'progress') return b.progress - a.progress;
-        if (sort === 'newest')   return b.id       - a.id;
+        if (sort === 'newest')   return (b.createdAt || '') > (a.createdAt || '') ? 1 : -1;
         if (sort === 'az')       return a.title.localeCompare(b.title);
         return 0;
       });

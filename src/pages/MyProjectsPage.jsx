@@ -3,17 +3,14 @@ import Sidebar        from '../components/layout/Sidebar';
 import Badge          from '../components/common/Badge';
 import ProgressBar    from '../components/common/ProgressBar';
 import NewProjectModal from '../components/projects/NewProjectModal';
-import { PROJECTS, USER_STATS } from '../data/data';
+import { PROJECTS } from '../data/data';
 import StatCard from '../components/common/StatCard';
 import styles   from './MyProjectsPage.module.css';
+import { ProjectIcon } from '../utils/projectIcon';
 
-// ── Extended metadata for demo projects ─────────────────────
-const MY_META = {
-  1: { role: 'owner',       lastUpdated: '2 дні тому'  },
-  3: { role: 'contributor', lastUpdated: 'Сьогодні'    },
-  8: { role: 'owner',       lastUpdated: '5 днів тому' },
-};
-const getMeta = (id) => MY_META[id] ?? { role: 'owner', lastUpdated: 'Щойно' };
+// Derive role from whether the current user created the project
+const getRole = (project, currentUserId) =>
+  project.createdBy === currentUserId ? 'owner' : 'contributor';
 
 // ── Filters / sort config ────────────────────────────────────
 const ROLE_FILTERS = [
@@ -48,10 +45,8 @@ const MemberStack = ({ colors, total }) => (
 );
 
 // ── Project card ─────────────────────────────────────────────
-const ProjectItem = ({ project, view, onDelete, onOpen }) => {
+const ProjectItem = ({ project, view, onDelete, onOpen, isAdmin = false, isOwner = false }) => {
   const [confirmDel, setConfirmDel] = useState(false);
-  const meta    = getMeta(project.id);
-  const isOwner = meta.role === 'owner';
 
   const triggerDelete = (e) => { e.stopPropagation(); setConfirmDel(true);  };
   const cancelDelete  = (e) => { e.stopPropagation(); setConfirmDel(false); };
@@ -65,7 +60,7 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
         onClick={() => !confirmDel && onOpen()}
       >
         <div className={styles.iconBox} style={{ background: project.iconBg }}>
-          {project.icon}
+          <ProjectIcon name={project.icon} bg={project.iconBg} size={20} />
         </div>
 
         <div className={styles.listBody}>
@@ -105,7 +100,7 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
               >
                 Відкрити
               </button>
-              {isOwner && (
+              {isOwner && isAdmin && (
                 <>
                   <button
                     className={`btn btn-ghost btn-sm ${styles.delIcon}`}
@@ -145,7 +140,7 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
       {/* Card top */}
       <div className={styles.cardTop}>
         <div className={styles.iconBox} style={{ background: project.iconBg }}>
-          {project.icon}
+          <ProjectIcon name={project.icon} bg={project.iconBg} size={20} />
         </div>
         <div className={styles.cardBadges}>
           <span className={`${styles.rolePill} ${isOwner ? styles.roleOwner : styles.roleContrib}`}>
@@ -173,7 +168,6 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
 
       {/* Action bar */}
       <div className={styles.actionBar}>
-        <span className={styles.lastUpdated}>{meta.lastUpdated}</span>
         <div className={styles.actionBtns}>
           <button
             className={`btn btn-outline btn-sm`}
@@ -181,7 +175,7 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
           >
             Відкрити
           </button>
-          {isOwner && (
+          {isOwner && isAdmin && (
             <>
               <button
                 className={`btn btn-ghost btn-sm ${styles.delIcon}`}
@@ -200,6 +194,8 @@ const ProjectItem = ({ project, view, onDelete, onOpen }) => {
 
 // ── Page ────────────────────────────────────────────────────
 const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, currentUser, onLogout }) => {
+  const isAdmin = currentUser?.system_role === 'admin';
+
   // Track IDs removed locally (delete button) without touching shared state
   const [deletedIds, setDeletedIds] = useState(new Set());
 
@@ -220,17 +216,17 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, curr
     setDeletedIds((prev) => new Set([...prev, id]));
 
   // ── Stats ──
-  const totalCount     = myProjects.length;
-  const ownedCount = myProjects.filter((p) => getMeta(p.id).role === 'owner').length;
+  const totalCount = myProjects.length;
+  const ownedCount = myProjects.filter((p) => p.createdBy === currentUser?.id).length;
 
   // ── Filtered + sorted ──
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return myProjects
       .filter((p) => {
-        const meta        = getMeta(p.id);
-        const matchRole   = roleFilter   === 'all' || meta.role    === roleFilter;
-        const matchStatus = statusFilter === 'all' || p.status     === statusFilter;
+        const role        = getRole(p, currentUser?.id);
+        const matchRole   = roleFilter   === 'all' || role      === roleFilter;
+        const matchStatus = statusFilter === 'all' || p.status  === statusFilter;
         const matchQuery  = !q ||
           p.title.toLowerCase().includes(q) ||
           p.desc.toLowerCase().includes(q)  ||
@@ -266,16 +262,27 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, curr
                   : 'У вас ще немає проєктів'}
               </div>
             </div>
-            <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
-              + Новий проєкт
-            </button>
+            {isAdmin && (
+              <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
+                + Новий проєкт
+              </button>
+            )}
           </div>
 
           {/* ── Stats row ── */}
           <div className="stat-row">
-            {USER_STATS.map((s) => (
-              <StatCard key={s.label} {...s} />
-            ))}
+            <StatCard
+              label="Приєднано проєктів"
+              value={String(myProjects.length)}
+            />
+            <StatCard
+              label="Витрачено годин"
+              value={String(Math.round(Number(currentUser?.total_logged_hours ?? currentUser?.total_hours ?? 0)))}
+            />
+            <StatCard
+              label="Виконано завдань"
+              value={String(Number(currentUser?.total_tasks ?? 0))}
+            />
           </div>
 
           {/* ── Toolbar ── */}
@@ -372,9 +379,11 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, curr
                 Створіть свій перший проєкт або приєднайтесь до наявного через «Огляд».
               </div>
               <div className={styles.emptyActions}>
-                <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
-                  + Створити перший проєкт
-                </button>
+                {isAdmin && (
+                  <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
+                    + Створити перший проєкт
+                  </button>
+                )}
                 <button className="btn btn-ghost" onClick={() => onNavigate('explore')}>
                   Переглянути проєкти
                 </button>
@@ -404,6 +413,8 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, curr
                   view={view}
                   onDelete={handleDelete}
                   onOpen={() => onNavigate('project-detail', p)}
+                  isAdmin={isAdmin}
+                  isOwner={p.createdBy === currentUser?.id}
                 />
               ))}
             </div>

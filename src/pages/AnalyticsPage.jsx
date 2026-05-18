@@ -1,52 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import StatCard from '../components/common/StatCard';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import { PROJECTS } from '../data/data';
 import styles from './AnalyticsPage.module.css';
+import { ProjectIcon } from '../utils/projectIcon';
+import { fetchAnalyticsStats, fetchProjectsByCategory, fetchKeyMetrics, fetchReport } from '../api/analytics';
+import SpendingChart from '../components/common/SpendingChart';
 
-// ── Mock analytics data ───────────────────────────────────────────────────────
-const ANALYTICS_STATS = [
-  { label: 'Всього волонтерів',    value: '247',   change: '↑ 18 цього місяця',  accent: '#FF6B9D' },
-  { label: 'Активні проєкти',      value: '12',    change: '↑ 2 цього тижня',    accent: '#4CAF7D' },
-  { label: 'Завершені активності', value: '38',    change: '↑ 5 цього місяця',   accent: '#F59E0B' },
-  { label: 'Тварин під опікою',    value: '1 840', change: '↑ 120 цього місяця', accent: '#8B5CF6' },
+// Static accent colors and labels for the four overview stat cards.
+// Values are replaced with live data fetched from the API.
+const STATS_TEMPLATE = [
+  { label: 'Всього волонтерів залучено до проєктів', key: 'totalVolunteers',   accent: '#FF6B9D' },
+  { label: 'Активні проєкти',                        key: 'activeProjects',    accent: '#4CAF7D' },
+  { label: 'Завершені проєкти',                      key: 'completedProjects', accent: '#F59E0B' },
+  { label: 'Кількість виконаних задач',               key: 'completedTasks',    accent: '#8B5CF6' },
 ];
 
-const CATEGORY_BARS = [
-  { label: 'Довкілля',  value: 9, color: '#4CAF7D' },
-  { label: 'Освіта',    value: 7, color: '#FF6B9D' },
-  { label: 'Соціальне', value: 5, color: '#F59E0B' },
-  { label: 'Культура',  value: 4, color: '#8B5CF6' },
-  { label: "Здоров'я",  value: 2, color: '#06B6D4' },
-];
-const CAT_MAX = Math.max(...CATEGORY_BARS.map((b) => b.value));
+// Color assigned to each category by name — matches the design system palette.
+const CATEGORY_COLORS = {
+  'Довкілля':  '#4CAF7D',
+  'Освіта':    '#FF6B9D',
+  'Соціальне': '#F59E0B',
+  'Культура':  '#8B5CF6',
+  "Здоров'я":  '#06B6D4',
+  'Загальне':  '#6B7280',
+};
 
-const ACTIVITY_LINE = [
-  { month: 'Жовт',   v: 32 },
-  { month: 'Листоп', v: 48 },
-  { month: 'Груд',   v: 41 },
-  { month: 'Січ',    v: 63 },
-  { month: 'Лют',    v: 57 },
-  { month: 'Бер',    v: 89 },
-];
-const SVG_W    = 560;
-const SVG_H    = 160;
-const PAD_T    = 12;  // top padding so the highest dot isn't clipped
-const PAD_B    = 12;  // bottom padding
-const DRAW_H   = SVG_H - PAD_T - PAD_B;
-const LINE_MAX = Math.max(...ACTIVITY_LINE.map((d) => d.v));
-const LINE_MIN = Math.min(...ACTIVITY_LINE.map((d) => d.v));
-const LINE_RNG = LINE_MAX - LINE_MIN || 1;
-
-const linePoints = ACTIVITY_LINE.map((d, i) => {
-  const x = (i / (ACTIVITY_LINE.length - 1)) * SVG_W;
-  const y = PAD_T + (1 - (d.v - LINE_MIN) / LINE_RNG) * DRAW_H;
-  return `${x.toFixed(1)},${y.toFixed(1)}`;
-}).join(' ');
-
-const areaPoints = `0,${SVG_H} ${linePoints} ${SVG_W},${SVG_H}`;
 
 const DONUT_DATA = [
   { label: 'Нові волонтери',     pct: 42, color: '#FF6B9D', dashArr: '60 144', offset: 0    },
@@ -54,12 +35,7 @@ const DONUT_DATA = [
   { label: 'Разові учасники',    pct: 20, color: '#F59E0B', dashArr: '29 144', offset: -115 },
 ];
 
-const KEY_METRICS = [
-  { label: 'Середній прогрес',    value: '61%',   sub: 'по всіх проєктах',      color: '#FF6B9D' },
-  { label: 'Учасників на проєкт', value: '42',    sub: 'в середньому',           color: '#4CAF7D' },
-  { label: 'Активних цього тижня',value: '89',    sub: 'волонтерів',             color: '#F59E0B' },
-  { label: 'Рівень виконання',    value: '89%',   sub: 'завершені вчасно',       color: '#8B5CF6' },
-];
+// KEY_METRICS is now derived from the API — see keyMetrics state below
 
 const BASE_INSIGHTS = PROJECTS.slice(0, 6).map((p) => ({
   ...p,
@@ -68,9 +44,6 @@ const BASE_INSIGHTS = PROJECTS.slice(0, 6).map((p) => ({
   trend:      p.progress >= 70 ? '↑' : p.progress >= 40 ? '→' : '↓',
   trendColor: p.progress >= 70 ? '#4CAF7D' : p.progress >= 40 ? '#F59E0B' : '#FF6B9D',
 }));
-
-const PROJECT_TYPES = ['Всі типи', 'Довкілля', 'Освіта', 'Соціальне', 'Культура'];
-const LOCATIONS     = ['Всі міста', 'Київ', 'Львів', 'Харків', 'Одеса', 'Дніпро'];
 
 const ProgressCell = ({ pct, color }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -81,25 +54,80 @@ const ProgressCell = ({ pct, color }) => (
   </div>
 );
 
+const STATUS_LABELS_UK = {
+  active:      'Активний',
+  new:         'Новий',
+  in_progress: 'В процесі',
+  completed:   'Завершено',
+  archived:    'Архів',
+};
+
+const exportToCsv = (rows) => {
+  const escapeCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['Назва проєкту', 'Статус', 'Учасники', 'Загальний час (год)', 'Загальна сума (грн)'];
+  const lines = [
+    header.map(escapeCell).join(','),
+    ...rows.map((r) => [
+      r.title,
+      STATUS_LABELS_UK[r.status] ?? r.status,
+      r.members.join('; '),
+      Number(r.totalHours).toFixed(2),
+      Number(r.totalSpent).toFixed(2),
+    ].map(escapeCell).join(',')),
+  ];
+  // UTF-8 BOM so Excel opens Ukrainian text without garbling
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `звіт_kindora_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo,   setDateTo]   = useState('');
-  const [projType, setProjType] = useState('Всі типи');
-  const [location, setLocation] = useState('Всі міста');
-  const [filtered, setFiltered] = useState(BASE_INSIGHTS);
+  const [filtered,       setFiltered]       = useState(BASE_INSIGHTS);
+  const [exporting,      setExporting]      = useState(false);
 
-  const handleApply = () => {
-    let result = [...BASE_INSIGHTS];
-    if (projType !== 'Всі типи') result = result.filter((p) => p.category === projType);
-    setFiltered(result);
-  };
+  const [statsData,    setStatsData]    = useState(null);
+  const [categoryBars, setCategoryBars] = useState([]);
+  const [keyMetrics,   setKeyMetrics]   = useState(null);
 
-  const handleReset = () => {
-    setDateFrom('');
-    setDateTo('');
-    setProjType('Всі типи');
-    setLocation('Всі міста');
-    setFiltered(BASE_INSIGHTS);
+  useEffect(() => {
+    fetchAnalyticsStats()
+      .then(setStatsData)
+      .catch(() => {});
+
+    fetchProjectsByCategory()
+      .then((rows) =>
+        setCategoryBars(
+          rows.map((r) => {
+            const value = Number(r.value);
+            return {
+              label: r.label,
+              value,
+              color: value > 0 ? (CATEGORY_COLORS[r.label] ?? '#9CA3AF') : '#D1D5DB',
+            };
+          }),
+        ),
+      )
+      .catch(() => {});
+
+    fetchKeyMetrics()
+      .then(setKeyMetrics)
+      .catch(() => {});
+  }, []);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const rows = await fetchReport();
+      exportToCsv(rows);
+    } catch (err) {
+      console.error('Не вдалося завантажити звіт:', err.message);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -115,65 +143,21 @@ const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
               <h1 className="page-title">Аналітика</h1>
               <p className="page-sub">Відстежуйте показники волонтерської діяльності та прогрес проєктів</p>
             </div>
-            <Button variant="outline" sm>↓ Експорт звіту</Button>
+            <Button variant="outline" sm onClick={handleExport} disabled={exporting}>
+              {exporting ? 'Завантаження…' : '↓ Експорт звіту'}
+            </Button>
           </div>
 
           {/* Overview stats */}
           <div className="stat-row" style={{ marginBottom: 24 }}>
-            {ANALYTICS_STATS.map((s) => (
-              <StatCard key={s.label} {...s} />
+            {STATS_TEMPLATE.map((s) => (
+              <StatCard
+                key={s.label}
+                label={s.label}
+                accent={s.accent}
+                value={statsData ? String(statsData[s.key]) : '—'}
+              />
             ))}
-          </div>
-
-          {/* Filters */}
-          <div className="section-card" style={{ marginBottom: 16 }}>
-            <div className="section-head">
-              <div className="section-title">Фільтри</div>
-            </div>
-            <div className={styles.filtersRow}>
-              <div className={styles.filterGroup}>
-                <label className="input-label">Дата від</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                />
-              </div>
-              <div className={styles.filterGroup}>
-                <label className="input-label">Дата до</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                />
-              </div>
-              <div className={styles.filterGroup}>
-                <label className="input-label">Тип проєкту</label>
-                <select
-                  className="input"
-                  value={projType}
-                  onChange={(e) => setProjType(e.target.value)}
-                >
-                  {PROJECT_TYPES.map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className={styles.filterGroup}>
-                <label className="input-label">Місто</label>
-                <select
-                  className="input"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                >
-                  {LOCATIONS.map((l) => <option key={l}>{l}</option>)}
-                </select>
-              </div>
-              <div className={styles.filterActions}>
-                <Button variant="primary" sm onClick={handleApply}>Застосувати</Button>
-                <Button variant="ghost"   sm onClick={handleReset}>Скинути</Button>
-              </div>
-            </div>
           </div>
 
           {/* Charts row 1 */}
@@ -185,85 +169,27 @@ const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
                 <div className="section-title">Проєкти за категорією</div>
               </div>
               <div className={styles.hBarChart}>
-                {CATEGORY_BARS.map((b) => (
-                  <div key={b.label} className={styles.hBarRow}>
-                    <span className={styles.hBarLabel}>{b.label}</span>
-                    <div className={styles.hBarTrack}>
-                      <div
-                        className={styles.hBarFill}
-                        style={{ width: `${(b.value / CAT_MAX) * 100}%`, background: b.color }}
-                      />
+                {(() => {
+                  const catMax = Math.max(...categoryBars.map((b) => b.value), 1);
+                  return categoryBars.map((b) => (
+                    <div key={b.label} className={styles.hBarRow}>
+                      <span className={styles.hBarLabel}>{b.label}</span>
+                      <div className={styles.hBarTrack}>
+                        <div
+                          className={styles.hBarFill}
+                          style={{ width: `${(b.value / catMax) * 100}%`, background: b.color }}
+                        />
+                      </div>
+                      <span className={styles.hBarValue} style={{ color: b.value === 0 ? '#9CA3AF' : undefined }}>
+                        {b.value}
+                      </span>
                     </div>
-                    <span className={styles.hBarValue}>{b.value}</span>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
 
-            {/* Line chart — activity over time */}
-            <div className="section-card">
-              <div className="section-head">
-                <div className="section-title">Активність за 6 місяців</div>
-              </div>
-              <div className={styles.lineChartWrap}>
-                <svg
-                  viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-                  className={styles.lineSvg}
-                  preserveAspectRatio="xMidYMid meet"
-                >
-                  <defs>
-                    <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#FF6B9D" stopOpacity="0.18" />
-                      <stop offset="100%" stopColor="#FF6B9D" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Grid lines */}
-                  {[0.25, 0.5, 0.75].map((f) => (
-                    <line
-                      key={f}
-                      x1="0" y1={SVG_H * (1 - f)}
-                      x2={SVG_W} y2={SVG_H * (1 - f)}
-                      stroke="#E5E7EB" strokeWidth="1"
-                    />
-                  ))}
-
-                  {/* Area fill */}
-                  <polygon points={areaPoints} fill="url(#lineGrad)" />
-
-                  {/* Line */}
-                  <polyline
-                    points={linePoints}
-                    fill="none"
-                    stroke="#FF6B9D"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Data dots */}
-                  {ACTIVITY_LINE.map((d, i) => {
-                    const x = (i / (ACTIVITY_LINE.length - 1)) * SVG_W;
-                    const y = PAD_T + (1 - (d.v - LINE_MIN) / LINE_RNG) * DRAW_H;
-                    return (
-                      <circle
-                        key={i}
-                        cx={x.toFixed(1)}
-                        cy={y.toFixed(1)}
-                        r="3.5"
-                        fill="#FF6B9D"
-                        stroke="#fff"
-                        strokeWidth="2"
-                      />
-                    );
-                  })}
-                </svg>
-
-                <div className={styles.lineLabels}>
-                  {ACTIVITY_LINE.map((d) => <span key={d.month}>{d.month}</span>)}
-                </div>
-              </div>
-            </div>
+            <SpendingChart />
           </div>
 
           {/* Charts row 2 */}
@@ -310,17 +236,27 @@ const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
                 <div className="section-title">Ключові показники</div>
               </div>
               <div className={styles.insightGrid}>
-                {KEY_METRICS.map((item) => (
-                  <div
-                    key={item.label}
-                    className={styles.insightCard}
-                    style={{ borderLeftColor: item.color }}
-                  >
-                    <p className={styles.insightValue}>{item.value}</p>
-                    <p className={styles.insightLabel}>{item.label}</p>
-                    <p className={styles.insightSub}>{item.sub}</p>
-                  </div>
-                ))}
+                <div className={styles.insightCard} style={{ borderLeftColor: '#FF6B9D' }}>
+                  <p className={styles.insightValue}>
+                    {keyMetrics ? `${keyMetrics.avgProgress}%` : '—'}
+                  </p>
+                  <p className={styles.insightLabel}>Середній прогрес</p>
+                  <p className={styles.insightSub}>по всіх проєктах</p>
+                </div>
+                <div className={styles.insightCard} style={{ borderLeftColor: '#F59E0B' }}>
+                  <p className={styles.insightValue}>
+                    {keyMetrics ? keyMetrics.activeThisWeek : '—'}
+                  </p>
+                  <p className={styles.insightLabel}>Активних цього тижня</p>
+                  <p className={styles.insightSub}>волонтерів виконали завдання</p>
+                </div>
+                <div className={styles.insightCard} style={{ borderLeftColor: '#4CAF7D' }}>
+                  <p className={styles.insightValue}>
+                    {keyMetrics ? keyMetrics.avgMembersPerProject : '—'}
+                  </p>
+                  <p className={styles.insightLabel}>Учасників на проєкт</p>
+                  <p className={styles.insightSub}>в середньому</p>
+                </div>
               </div>
             </div>
           </div>
@@ -347,7 +283,14 @@ const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
                 <tbody>
                   {filtered.map((p) => (
                     <tr key={p.id}>
-                      <td className={styles.tdName}>{p.icon} {p.title}</td>
+                      <td className={styles.tdName}>
+                        <span style={{ display:'inline-flex', alignItems:'center', gap: 8 }}>
+                          <span style={{ background: p.iconBg, width: 26, height: 26, borderRadius: 6, display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink: 0 }}>
+                            <ProjectIcon name={p.icon} bg={p.iconBg} size={14} />
+                          </span>
+                          {p.title}
+                        </span>
+                      </td>
                       <td>
                         <span className="badge badge-gray">{p.category}</span>
                       </td>

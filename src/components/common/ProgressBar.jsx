@@ -4,6 +4,7 @@ const COLOR_MAP = {
   active:        '#4CAF7D',
   new:           '#FF6B9D',
   'in-progress': '#F59E0B',
+  in_progress:   '#F59E0B',
   completed:     '#9CA3AF',
 };
 

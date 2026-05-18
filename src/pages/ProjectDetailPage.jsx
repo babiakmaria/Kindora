@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import styles  from './ProjectDetailPage.module.css';
-import { fetchTasks, createTask, updateTask, deleteTask, fetchProjectMembers } from '../api/tasks';
+import { fetchTasks, createTask, updateTask, deleteTask, fetchProjectMembers, searchUsers, addProjectMember, removeProjectMember, fetchCalendar } from '../api/tasks';
+import { ProjectIcon } from '../utils/projectIcon';
 
 // Mock contributors (active on this project — also used by calendar lookups)
 const CONTRIBUTORS = [
@@ -12,101 +13,6 @@ const CONTRIBUTORS = [
   { id: 5, initials: 'ТК', name: 'Тетяна Клименко',   color: '#06B6D4', hours: 9,  tasks: 3  },
 ];
 
-// Extra volunteers available to invite
-const EXTRA_POOL = [
-  { id: 6,  initials: 'ІМ', name: 'Іван Мороз',        color: '#10B981', hours: 0, tasks: 0 },
-  { id: 7,  initials: 'НБ', name: 'Наталія Бондар',    color: '#F97316', hours: 0, tasks: 0 },
-  { id: 8,  initials: 'РК', name: 'Роман Кравченко',   color: '#6366F1', hours: 0, tasks: 0 },
-  { id: 9,  initials: 'ЮЛ', name: 'Юлія Лисенко',     color: '#EC4899', hours: 0, tasks: 0 },
-  { id: 10, initials: 'СГ', name: 'Сергій Гриценко',  color: '#14B8A6', hours: 0, tasks: 0 },
-];
-
-const PRESET_COLORS = ['#FF6B9D','#4CAF7D','#8B5CF6','#F59E0B','#06B6D4','#10B981','#F97316','#6366F1','#EC4899','#14B8A6'];
-
-// Calendar entries (April 2026)
-const CALENDAR_DATA = {
-  '2026-04-01': [
-    { userId: 1, tasks: ['Планування'],    time: '2г'       },
-    { userId: 2, tasks: ['Дизайн'],        time: '1г 30хв'  },
-  ],
-  '2026-04-02': [
-    { userId: 3, tasks: ['Аналіз ґрунту'], time: '3г'       },
-    { userId: 4, tasks: ['Закупівля'],     time: '45хв'     },
-  ],
-  '2026-04-03': [
-    { userId: 1, tasks: ['Посадка'],       time: '4г'       },
-    { userId: 2, tasks: ['Посадка'],       time: '4г'       },
-    { userId: 5, tasks: ['Документація'], time: '1г'        },
-  ],
-  '2026-04-05': [
-    { userId: 3, tasks: ['Полив'],         time: '1г 30хв'  },
-  ],
-  '2026-04-07': [
-    { userId: 1, tasks: ['Зустріч'],       time: '1г'       },
-    { userId: 2, tasks: ['Зустріч'],       time: '1г'       },
-    { userId: 3, tasks: ['Зустріч'],       time: '1г'       },
-  ],
-  '2026-04-08': [
-    { userId: 4, tasks: ['Прибирання'],   time: '2г 30хв'   },
-    { userId: 5, tasks: ['Фото-звіт'],    time: '1г'        },
-  ],
-  '2026-04-10': [
-    { userId: 1, tasks: ['Посадка дерев', 'Лавки'], time: '5г' },
-    { userId: 3, tasks: ['Посадка дерев'],           time: '4г' },
-  ],
-  '2026-04-11': [
-    { userId: 2, tasks: ['Розмітка'],     time: '2г'        },
-    { userId: 4, tasks: ['Інструменти'], time: '1г'         },
-  ],
-  '2026-04-12': [
-    { userId: 1, tasks: ['Координація'],  time: '2г'        },
-    { userId: 5, tasks: ['Соц. мережі'], time: '1г 30хв'   },
-  ],
-  '2026-04-14': [
-    { userId: 2, tasks: ['Полив'],        time: '1г'        },
-    { userId: 3, tasks: ['Обрізка'],      time: '2г'        },
-  ],
-  '2026-04-15': [
-    { userId: 1, tasks: ['Звіт'],         time: '1г 30хв'  },
-    { userId: 4, tasks: ['Звіт'],         time: '1г'        },
-  ],
-  '2026-04-17': [
-    { userId: 3, tasks: ['Посадка кущів'], time: '3г'      },
-    { userId: 5, tasks: ['Полив'],          time: '45хв'   },
-  ],
-  '2026-04-19': [
-    { userId: 1, tasks: ['Майстер-клас'],  time: '3г'      },
-    { userId: 2, tasks: ['Майстер-клас'],  time: '3г'      },
-    { userId: 3, tasks: ['Майстер-клас'],  time: '3г'      },
-    { userId: 4, tasks: ['Майстер-клас'],  time: '3г'      },
-  ],
-  '2026-04-21': [
-    { userId: 2, tasks: ['Огляд'],         time: '1г 30хв' },
-  ],
-  '2026-04-22': [
-    { userId: 1, tasks: ['Координація', 'Зустріч'], time: '3г' },
-    { userId: 5, tasks: ['Документація'],              time: '2г' },
-  ],
-  '2026-04-24': [
-    { userId: 3, tasks: ['Садівництво'],   time: '2г'      },
-    { userId: 4, tasks: ['Полив'],         time: '1г'      },
-  ],
-  '2026-04-26': [
-    { userId: 1, tasks: ['Перевірка'],    time: '1г'       },
-    { userId: 2, tasks: ['Звіт'],         time: '1г 30хв'  },
-    { userId: 5, tasks: ['Фото'],         time: '45хв'     },
-  ],
-  '2026-04-28': [
-    { userId: 3, tasks: ['Прибирання'],   time: '2г'       },
-  ],
-  '2026-04-29': [
-    { userId: 1, tasks: ['Фінальний огляд'], time: '2г'   },
-    { userId: 2, tasks: ['Презентація'],     time: '2г'   },
-    { userId: 3, tasks: ['Презентація'],     time: '2г'   },
-    { userId: 4, tasks: ['Презентація'],     time: '2г'   },
-    { userId: 5, tasks: ['Презентація'],     time: '2г'   },
-  ],
-};
 
 // Todos
 const INITIAL_TODOS = [
@@ -127,10 +33,46 @@ const MONTH_UA   = ['Січень','Лютий','Березень','Квітен
 const DAY_UA     = ['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
 const PRIORITY   = { high: { color: '#FF6B9D', bg: '#FFF0F5', label: 'Важливо' }, medium: { color: '#F59E0B', bg: '#FFF8E1', label: 'Середній' }, low: { color: '#4CAF7D', bg: '#EAF7F0', label: 'Низький' } };
 
-const padDate  = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-const daysInMonth  = (y, m) => new Date(y, m + 1, 0).getDate();
-const firstWeekday = (y, m) => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; };
-const getContributor = (id) => CONTRIBUTORS.find((c) => c.id === id); // calendar only
+// Predefined project tags grouped by category
+const PREDEFINED_TAGS = [
+  {
+    group: 'Сфера діяльності',
+    tags: [
+      'гуманітарна допомога', 'медицина', 'екологія та природа', 'зоозахист',
+      'допомога армії', 'освіта та тренінги', 'діти та молодь',
+      'допомога літнім людям', 'культура та мистецтво',
+      'цифрове волонтерство', 'психологічна підтримка', 'відбудова та ремонт',
+    ],
+  },
+  {
+    group: 'Тип зайнятості',
+    tags: [
+      'онлайн', 'офлайн', 'довгостроковий проєкт',
+      'гнучкий графік', 'вихідні дні', 'вечірній час', 'терміново',
+    ],
+  },
+  {
+    group: 'Навички / Спеціалізація',
+    tags: [
+      'водій / логістика', 'переклад мов', 'копірайтинг та SMM',
+      'фото та відео', 'IT розробка', 'юридична допомога',
+      'фінанси та бухгалтерія', 'кулінарія та кетеринг', 'фізична праця',
+    ],
+  },
+];
+
+const padDate      = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+const daysInMonth  = (y, m)    => new Date(y, m + 1, 0).getDate();
+const firstWeekday = (y, m)    => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; };
+
+// Format integer minutes → Ukrainian short string: 120→"2г", 90→"1г 30хв", 45→"45хв", 0→"0хв"
+const formatMinutes = (totalMin) => {
+  if (!totalMin || totalMin <= 0) return '0хв';
+  if (totalMin < 60) return `${totalMin}хв`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}г ${m}хв` : `${h}г`;
+};
 
 // API shape → UI shape mappers
 const mapTask = (t) => ({
@@ -140,6 +82,7 @@ const mapTask = (t) => ({
   done:        t.is_done,
   priority:    t.priority || 'medium',
   loggedHours: t.logged_hours ? Number(t.logged_hours) : null,
+  price:       t.price       ? Number(t.price)        : null,
 });
 
 // e.g. 0.5 → "30хв",  1.5 → "1г 30хв",  2 → "2г"
@@ -221,27 +164,33 @@ const DayCell = ({ day, dateStr, entries, isToday, isPast, isSelected, onSelect 
       {hasActivity && (
         <>
           <div className={styles.dotRow}>
-            {entries.slice(0, 4).map((e, i) => {
-              const c = getContributor(e.userId);
-              return c ? (
-                <div
-                  key={i}
-                  className={styles.contribDot}
-                  style={{ background: c.color }}
-                  title={c.name}
-                />
-              ) : null;
-            })}
+            {entries.slice(0, 4).map((e, i) => (
+              <div
+                key={i}
+                className={styles.contribDot}
+                style={{ background: e.color }}
+                title={e.name}
+              />
+            ))}
             {entries.length > 4 && (
               <span className={styles.moreCount}>+{entries.length - 4}</span>
             )}
           </div>
 
-          {entries[0].tasks[0] && (
-            <div className={styles.taskTag}>{entries[0].tasks[0]}</div>
-          )}
-
-          <div className={styles.timeBadge}>{entries[0].time}</div>
+          {(() => {
+            const dayMinutes = entries.reduce((s, e) => s + (e.totalMinutes || 0), 0);
+            const dayPrice   = entries.reduce((s, e) => s + (e.totalPrice   || 0), 0);
+            return (
+              <div className={styles.daySummary}>
+                {dayMinutes > 0 && (
+                  <span className={styles.timeBadge}>{formatMinutes(dayMinutes)}</span>
+                )}
+                {dayPrice > 0 && (
+                  <span className={styles.priceBadge}>₴{dayPrice.toLocaleString('uk-UA')}</span>
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>
@@ -250,12 +199,10 @@ const DayCell = ({ day, dateStr, entries, isToday, isPast, isSelected, onSelect 
 
 // Day detail panel — rendered below the grid, never inside a cell
 const DayDetailPanel = ({ dateStr, entries, onClose }) => {
-  const date   = new Date(dateStr);
-  const label  = `${date.getDate()} ${MONTH_UA[date.getMonth()]} ${date.getFullYear()}`;
-  const totalTime = entries.reduce((sum, e) => {
-    const match = e.time.match(/(\d+)г/);
-    return sum + (match ? parseInt(match[1], 10) : 0);
-  }, 0);
+  const date       = new Date(dateStr + 'T00:00:00');
+  const label      = `${date.getDate()} ${MONTH_UA[date.getMonth()]} ${date.getFullYear()}`;
+  const totalMin   = entries.reduce((sum, e) => sum + (e.totalMinutes || 0), 0);
+  const totalPrice = entries.reduce((sum, e) => sum + (e.totalPrice   || 0), 0);
 
   return (
     <div className={styles.dayDetail}>
@@ -264,32 +211,37 @@ const DayDetailPanel = ({ dateStr, entries, onClose }) => {
           <span className={styles.dayDetailDate}>{label}</span>
           <span className={styles.dayDetailSummary}>
             {entries.length} {entries.length === 1 ? 'учасник' : entries.length < 5 ? 'учасники' : 'учасників'}
-            {totalTime > 0 && ` · ${totalTime}г загалом`}
+            {totalMin   > 0 && ` · ${formatMinutes(totalMin)} загалом`}
+            {totalPrice > 0 && ` · ₴${totalPrice.toLocaleString('uk-UA')}`}
           </span>
         </div>
         <button className={styles.dayDetailClose} onClick={onClose} aria-label="Закрити">×</button>
       </div>
 
       <div className={styles.dayDetailEntries}>
-        {entries.map((entry, i) => {
-          const c = getContributor(entry.userId);
-          return c ? (
-            <div key={i} className={styles.dayDetailEntry}>
-              <div className={styles.detailAvatar} style={{ background: c.color }}>
-                {c.initials}
-              </div>
-              <div className={styles.detailInfo}>
-                <div className={styles.detailName}>{c.name}</div>
-                <div className={styles.detailTasks}>
-                  {entry.tasks.map((t, j) => (
-                    <span key={j} className={styles.detailTask}>{t}</span>
-                  ))}
-                </div>
-              </div>
-              <div className={styles.detailTime}>{entry.time}</div>
+        {entries.map((entry, i) => (
+          <div key={i} className={styles.dayDetailEntry}>
+            <div className={styles.detailAvatar} style={{ background: entry.color }}>
+              {entry.initials}
             </div>
-          ) : null;
-        })}
+            <div className={styles.detailInfo}>
+              <div className={styles.detailName}>{entry.name}</div>
+              <div className={styles.detailTasks}>
+                {entry.tasks.map((t, j) => (
+                  <span key={j} className={styles.detailTask}>{t}</span>
+                ))}
+              </div>
+            </div>
+            <div className={styles.detailMeta}>
+              {entry.totalMinutes > 0 && (
+                <span className={styles.detailTime}>{formatMinutes(entry.totalMinutes)}</span>
+              )}
+              {entry.totalPrice > 0 && (
+                <span className={styles.detailPrice}>₴{entry.totalPrice.toLocaleString('uk-UA')}</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -433,6 +385,11 @@ const TodoItem = ({ todo, onToggle, onDelete, members = [], disabled = false }) 
           <span className={styles.priorityTag} style={{ color: p.color, background: p.bg }}>
             {p.label}
           </span>
+          {todo.price > 0 && (
+            <span className={styles.todoPriceTag}>
+              ₴ {todo.price.toLocaleString('uk-UA')}
+            </span>
+          )}
         </div>
       </div>
 
@@ -451,7 +408,7 @@ const TodoItem = ({ todo, onToggle, onDelete, members = [], disabled = false }) 
 };
 
 // Main page
-const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogout, onUpdateProject }) => {
+const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogout, onUpdateProject, onSyncProject, onDeleteProject }) => {
   const proj = project ?? {
     icon: '🌳', iconBg: '#EAF7F0',
     title: 'Відновлення міського парку',
@@ -461,20 +418,29 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
   };
 
   const projectId = proj.id || null;
+  const isAdmin   = currentUser?.system_role === 'admin';
+  const isOwner   = currentUser?.id != null && currentUser.id === proj.createdBy;
 
-  const [year,          setYear]          = useState(2026);
-  const [month,         setMonth]         = useState(3); // April = index 3
+  const today0         = new Date();
+  const [year,          setYear]          = useState(today0.getFullYear());
+  const [month,         setMonth]         = useState(today0.getMonth()); // 0-based
   const [selectedDate,  setSelectedDate]  = useState(null);
+  const [calendarData,  setCalendarData]  = useState({});
+  const [calendarLoading, setCalendarLoading] = useState(false);
   const [todos,         setTodos]         = useState([]);
   const [members,       setMembers]       = useState([]);
   const [tasksLoading,  setTasksLoading]  = useState(false);
   const [taskError,     setTaskError]     = useState('');
   const [isCompleted,   setIsCompleted]   = useState(proj.status === 'completed');
 
+  // Delete confirmation dialog
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   // Time-tracking popup
   const [completingTask, setCompletingTask] = useState(null); // { id, title } | null
   const [trackValue,     setTrackValue]     = useState('');   // raw input
   const [trackUnit,      setTrackUnit]      = useState('hours'); // 'hours' | 'minutes'
+  const [trackPrice,     setTrackPrice]     = useState('');   // optional price in UAH
   const [completing,     setCompleting]     = useState(false);
 
   // Inline add-todo form state
@@ -482,6 +448,7 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
   const [draftTitle,      setDraftTitle]      = useState('');
   const [draftAssigneeId, setDraftAssigneeId] = useState('');
   const [draftPriority,   setDraftPriority]   = useState('medium');
+  const [draftPrice,      setDraftPrice]      = useState('');
 
   // Load tasks + members from API when project is known; fall back to mock otherwise
   useEffect(() => {
@@ -503,37 +470,49 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
     }).finally(() => setTasksLoading(false));
   }, [projectId]);
 
-  // Tags state
-  const [tags,         setTags]         = useState(['Довкілля', 'Волонтерство']);
-  const [tagInput,     setTagInput]     = useState('');
-  const [addingTag,    setAddingTag]    = useState(false);
-  const tagInputRef = useRef(null);
+  // Fetch calendar data whenever projectId, year or month changes
+  useEffect(() => {
+    if (!projectId) { setCalendarData({}); return; }
+    setCalendarLoading(true);
+    fetchCalendar(projectId, year, month + 1) // month + 1: API uses 1-based months
+      .then((data) => setCalendarData(data || {}))
+      .catch(() => setCalendarData({}))
+      .finally(() => setCalendarLoading(false));
+  }, [projectId, year, month]);
 
-  const handleAddTag = () => {
-    const val = tagInput.trim();
-    if (val && !tags.includes(val)) setTags((prev) => [...prev, val]);
-    setTagInput('');
-    setAddingTag(false);
-  };
-
-  const handleTagKey = (e) => {
-    if (e.key === 'Enter') handleAddTag();
-    if (e.key === 'Escape') { setTagInput(''); setAddingTag(false); }
-  };
+  // Tags state — seeded from the project object so they survive navigation
+  const [tags,         setTags]         = useState(() => proj.tags?.length ? proj.tags : []);
+  const [tagPopupOpen, setTagPopupOpen] = useState(false);
+  const tagPopupRef = useRef(null);
+  const tagAddBtnRef = useRef(null);
 
   const removeTag = (tag) => setTags((prev) => prev.filter((t) => t !== tag));
+  const toggleTag = (tag) => setTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
+
+  // Close tag popup on outside click
+  useEffect(() => {
+    if (!tagPopupOpen) return;
+    const handler = (e) => {
+      if (
+        tagPopupRef.current  && !tagPopupRef.current.contains(e.target) &&
+        tagAddBtnRef.current && !tagAddBtnRef.current.contains(e.target)
+      ) setTagPopupOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [tagPopupOpen]);
 
   // Contributor popover state
-  const [activeContribs,   setActiveContribs]   = useState(CONTRIBUTORS);
-  const [customContribs,   setCustomContribs]   = useState([]);
-  const [contribPopupOpen, setContribPopupOpen] = useState(false);
-  const [contribSearch,    setContribSearch]    = useState('');
-  const [newName,          setNewName]          = useState('');
-  const [newColor,         setNewColor]         = useState(PRESET_COLORS[0]);
+  const [contribPopupOpen,  setContribPopupOpen]  = useState(false);
+  const [contribSearch,     setContribSearch]     = useState('');
+  const [searchResults,     setSearchResults]     = useState([]);
+  const [searchLoading,     setSearchLoading]     = useState(false);
+  const [memberError,       setMemberError]       = useState('');
 
   const popupRef  = useRef(null);
   const addBtnRef = useRef(null);
 
+  // Close popup on outside click
   useEffect(() => {
     if (!contribPopupOpen) return;
     const handler = (e) => {
@@ -543,28 +522,57 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
       ) {
         setContribPopupOpen(false);
         setContribSearch('');
+        setSearchResults([]);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [contribPopupOpen]);
 
-  const fullPool    = [...CONTRIBUTORS, ...EXTRA_POOL, ...customContribs];
-  const isActive    = (id) => activeContribs.some((c) => c.id === id);
-  const toggleContrib = (person) =>
-    setActiveContribs((prev) =>
-      isActive(person.id) ? prev.filter((c) => c.id !== person.id) : [...prev, person]
-    );
+  // Debounced user search — fires 300 ms after the user stops typing
+  useEffect(() => {
+    const q = contribSearch.trim();
+    if (q.length < 2) { setSearchResults([]); return; }
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const rows = await searchUsers(q);
+        setSearchResults(rows.map(mapMember));
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [contribSearch]);
 
-  const createContrib = () => {
-    if (!newName.trim()) return;
-    const words    = newName.trim().split(' ');
-    const initials = words.map((w) => w[0]?.toUpperCase() ?? '').join('').slice(0, 2);
-    const person   = { id: Date.now(), initials, name: newName.trim(), color: newColor, hours: 0, tasks: 0 };
-    setCustomContribs((prev) => [...prev, person]);
-    setActiveContribs((prev) => [...prev, person]);
-    setNewName('');
-    setNewColor(PRESET_COLORS[0]);
+  // Whether a user is already a member of this project
+  const isMemberOf = (userId) => members.some((m) => m.id === userId);
+
+  // Add or remove a member via API (optimistic update, revert on error)
+  const toggleMember = async (person) => {
+    if (!projectId) return;
+    setMemberError('');
+    if (isMemberOf(person.id)) {
+      // Optimistic remove
+      setMembers((prev) => prev.filter((m) => m.id !== person.id));
+      try {
+        await removeProjectMember(projectId, person.id);
+      } catch (err) {
+        setMembers((prev) => [...prev, person]); // revert
+        setMemberError(err.message || 'Не вдалося видалити учасника');
+      }
+    } else {
+      // Optimistic add
+      setMembers((prev) => [...prev, person]);
+      try {
+        await addProjectMember(projectId, person.id);
+      } catch (err) {
+        setMembers((prev) => prev.filter((m) => m.id !== person.id)); // revert
+        setMemberError(err.message || 'Не вдалося додати учасника');
+      }
+    }
   };
 
   const prevMonth = () => { setSelectedDate(null); if (month === 0) { setMonth(11); setYear((y) => y - 1); } else setMonth((m) => m - 1); };
@@ -579,6 +587,7 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
       setCompletingTask({ id: todo.id, title: todo.title });
       setTrackValue('');
       setTrackUnit('hours');
+      setTrackPrice('');
       return;
     }
 
@@ -591,6 +600,10 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
     if (!projectId) return;
     try {
       await updateTask(projectId, id, { is_done: false });
+      // Refresh calendar so the dot disappears from the cell immediately
+      fetchCalendar(projectId, year, month + 1)
+        .then((data) => setCalendarData(data || {}))
+        .catch(() => {});
     } catch {
       setTodos((prev) => prev.map((t) => t.id === id ? { ...t, done: true } : t));
     }
@@ -606,9 +619,11 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
       ? (trackUnit === 'minutes' ? +(rawVal / 60).toFixed(4) : rawVal)
       : null;
 
+    const priceToLog = trackPrice && parseFloat(trackPrice) > 0 ? parseFloat(trackPrice) : null;
+
     // Optimistic update + close popup immediately
     setTodos((prev) => prev.map((t) =>
-      t.id === id ? { ...t, done: true, loggedHours: hoursToLog } : t
+      t.id === id ? { ...t, done: true, loggedHours: hoursToLog, ...(priceToLog !== null ? { price: priceToLog } : {}) } : t
     ));
     setCompletingTask(null);
 
@@ -618,8 +633,15 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
     try {
       await updateTask(projectId, id, {
         is_done: true,
-        ...(hoursToLog !== null ? { hours_logged: hoursToLog } : {}),
+        ...(hoursToLog  !== null ? { hours_logged: hoursToLog } : {}),
+        ...(priceToLog  !== null ? { price: priceToLog }        : {}),
       });
+      // Refresh calendar so the completed task appears on today's cell immediately
+      if (projectId) {
+        fetchCalendar(projectId, year, month + 1)
+          .then((data) => setCalendarData(data || {}))
+          .catch(() => {});
+      }
     } catch (err) {
       setTodos((prev) => prev.map((t) => t.id === id ? { ...t, done: false } : t));
       setTaskError(err.message || 'Помилка завершення задачі');
@@ -659,11 +681,12 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
     setDraftTitle('');
     setDraftAssigneeId(members[0]?.id || '');
     setDraftPriority('medium');
+    setDraftPrice('');
     setTaskError('');
     setAddingTodo(true);
   };
 
-  const cancelAdd = () => { setAddingTodo(false); setTaskError(''); };
+  const cancelAdd = () => { setAddingTodo(false); setTaskError(''); setDraftPrice(''); };
 
   const handleAddTodo = async () => {
     if (!draftTitle.trim()) return;
@@ -673,7 +696,7 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
       // Mock mode (no real project loaded yet)
       setTodos((prev) => [
         ...prev,
-        { id: String(Date.now()), title: draftTitle.trim(), assigneeId: draftAssigneeId || null, done: false, priority: draftPriority },
+        { id: String(Date.now()), title: draftTitle.trim(), assigneeId: draftAssigneeId || null, done: false, priority: draftPriority, price: draftPrice ? Number(draftPrice) : null },
       ]);
       setAddingTodo(false);
       return;
@@ -684,8 +707,10 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
         title:       draftTitle.trim(),
         assignee_id: draftAssigneeId || null,
         priority:    draftPriority,
+        price:       draftPrice ? Number(draftPrice) : null,
       });
-      setTodos((prev) => [...prev, mapTask(created)]);
+      const parsedPrice = draftPrice ? Number(draftPrice) : null;
+      setTodos((prev) => [...prev, { ...mapTask(created), price: parsedPrice }]);
       setAddingTodo(false);
     } catch (err) {
       setTaskError(err.message || 'Не вдалося створити задачу');
@@ -695,6 +720,30 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
   const doneCount    = todos.filter((t) => t.done).length;
   const totalTodos   = todos.length;
   const todoProgress = totalTodos > 0 ? Math.round((doneCount / totalTodos) * 100) : 0;
+
+  // Push tag changes back up to App state so they survive navigation
+  useEffect(() => {
+    if (!projectId || !onSyncProject) return;
+    onSyncProject(projectId, { tags });
+  }, [tags]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep project card progress + status in sync with the live task list
+  useEffect(() => {
+    if (!projectId || !onSyncProject || isCompleted) return;
+    let derivedStatus = null;
+    let derivedLabel  = null;
+    if (totalTodos > 0 && doneCount === 0) {
+      derivedStatus = 'in_progress';
+      derivedLabel  = 'В процесі';
+    } else if (doneCount > 0) {
+      derivedStatus = 'active';
+      derivedLabel  = 'Активний';
+    }
+    onSyncProject(projectId, {
+      progress: todoProgress,
+      ...(derivedStatus ? { status: derivedStatus, statusLabel: derivedLabel } : {}),
+    });
+  }, [todoProgress, doneCount, totalTodos, projectId, isCompleted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build calendar grid
   const totalDays = daysInMonth(year, month);
@@ -707,7 +756,7 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
     const dateStr  = padDate(year, month, d);
     const isToday  = today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
     const isPast   = new Date(year, month, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    cells.push({ day: d, dateStr, entries: CALENDAR_DATA[dateStr] || null, isToday, isPast });
+    cells.push({ day: d, dateStr, entries: calendarData[dateStr] || null, isToday, isPast });
   }
 
   return (
@@ -729,21 +778,23 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
 
               <div className={styles.projectMeta}>
                 <div className={styles.projectIcon} style={{ background: proj.iconBg }}>
-                  {proj.icon}
+                  <ProjectIcon name={proj.icon} bg={proj.iconBg} size={22} />
                 </div>
                 <div>
                   <div className={styles.projectTitleRow}>
                     <div className={styles.projectTitle}>{proj.title}</div>
-                    <button
-                      className={styles.deleteBtn}
-                      onClick={() => onNavigate('projects')}
-                      title="Видалити проєкт"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                        <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M5.5 6v3.5M7.5 6v3.5M2.5 3.5l.5 7a.5.5 0 00.5.5h5a.5.5 0 00.5-.5l.5-7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      Видалити
-                    </button>
+                    {isOwner && (
+                      <button
+                        className={styles.deleteBtn}
+                        onClick={() => setShowDeleteConfirm(true)}
+                        title="Видалити проєкт"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                          <path d="M2 3.5h9M5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M5.5 6v3.5M7.5 6v3.5M2.5 3.5l.5 7a.5.5 0 00.5.5h5a.5.5 0 00.5-.5l.5-7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Видалити
+                      </button>
+                    )}
                   </div>
                   <div className={styles.projectDesc}>{proj.desc}</div>
 
@@ -752,24 +803,50 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                     {tags.map((tag) => (
                       <span key={tag} className={styles.tag}>
                         {tag}
-                        <button className={styles.tagRemove} onClick={() => removeTag(tag)} title="Видалити тег">×</button>
+                        {isOwner && (
+                          <button className={styles.tagRemove} onClick={() => removeTag(tag)} title="Видалити тег">×</button>
+                        )}
                       </span>
                     ))}
 
-                    {addingTag ? (
-                      <input
-                        ref={tagInputRef}
-                        className={styles.tagInput}
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={handleTagKey}
-                        onBlur={handleAddTag}
-                        placeholder="Новий тег…"
-                        autoFocus
-                        maxLength={24}
-                      />
-                    ) : (
-                      <button className={styles.tagAdd} onClick={() => setAddingTag(true)} title="Додати тег">+</button>
+                    {isOwner && (
+                      <div className={styles.tagPickerWrap}>
+                        <button
+                          ref={tagAddBtnRef}
+                          className={`${styles.tagAdd} ${tagPopupOpen ? styles.tagAddActive : ''}`}
+                          onClick={() => setTagPopupOpen((v) => !v)}
+                          title="Додати тег"
+                        >+</button>
+
+                        {tagPopupOpen && (
+                          <div ref={tagPopupRef} className={styles.tagPopup}>
+                            {PREDEFINED_TAGS.map(({ group, tags: groupTags }) => (
+                              <div key={group} className={styles.tagGroup}>
+                                <div className={styles.tagGroupLabel}>{group}</div>
+                                <div className={styles.tagGroupList}>
+                                  {groupTags.map((t) => {
+                                    const active = tags.includes(t);
+                                    return (
+                                      <button
+                                        key={t}
+                                        className={`${styles.tagOption} ${active ? styles.tagOptionActive : ''}`}
+                                        onClick={() => toggleTag(t)}
+                                      >
+                                        {active && (
+                                          <svg width="9" height="7" viewBox="0 0 9 7" fill="none" style={{ flexShrink: 0 }}>
+                                            <path d="M1 3.5L3 5.5L8 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                        )}
+                                        {t}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -781,21 +858,28 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
             <div className={styles.contribSection}>
               <div className={styles.contribLabel}>Учасники</div>
               <div className={styles.contribRow}>
-                {activeContribs.map((c) => (
+                {members.map((c) => (
                   <ContribAvatar key={c.id} contributor={c} size={38} onNavigate={onNavigate} />
                 ))}
-                <button
-                  ref={addBtnRef}
-                  className={`${styles.addContrib} ${contribPopupOpen ? styles.addContribActive : ''}`}
-                  title="Додати учасника"
-                  onClick={() => { setContribPopupOpen((v) => !v); setContribSearch(''); }}
-                >+</button>
+                {isOwner && (
+                  <button
+                    ref={addBtnRef}
+                    className={`${styles.addContrib} ${contribPopupOpen ? styles.addContribActive : ''}`}
+                    title="Додати учасника"
+                    onClick={() => {
+                      setContribPopupOpen((v) => !v);
+                      setContribSearch('');
+                      setSearchResults([]);
+                      setMemberError('');
+                    }}
+                  >+</button>
+                )}
               </div>
 
-              {contribPopupOpen && (
+              {isOwner && contribPopupOpen && (
                 <div ref={popupRef} className={styles.contribPopup}>
 
-                  {/* Search */}
+                  {/* Search input */}
                   <div className={styles.cpSearchWrap}>
                     <svg className={styles.cpSearchIcon} width="13" height="13" viewBox="0 0 13 13" fill="none">
                       <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.4"/>
@@ -803,27 +887,51 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                     </svg>
                     <input
                       className={styles.cpSearchInput}
-                      placeholder="Пошук учасника…"
+                      placeholder="Пошук за іменем або поштою…"
                       value={contribSearch}
                       onChange={(e) => setContribSearch(e.target.value)}
                       autoFocus
                     />
                     {contribSearch && (
-                      <button className={styles.cpClear} onClick={() => setContribSearch('')}>×</button>
+                      <button className={styles.cpClear} onClick={() => { setContribSearch(''); setSearchResults([]); }}>×</button>
                     )}
                   </div>
 
-                  {/* Pool list */}
+                  {/* Results list */}
                   <div className={styles.cpList}>
-                    {fullPool
-                      .filter((p) => p.name.toLowerCase().includes(contribSearch.toLowerCase()))
-                      .map((person) => {
-                        const active = isActive(person.id);
+                    {/* While typing < 2 chars: show current members so admin can remove them */}
+                    {contribSearch.trim().length < 2 ? (
+                      members.length > 0 ? (
+                        members.map((person) => (
+                          <button
+                            key={person.id}
+                            className={`${styles.cpItem} ${styles.cpItemActive}`}
+                            onClick={() => toggleMember(person)}
+                          >
+                            <div className={styles.cpAvatar} style={{ background: person.color }}>
+                              {person.initials}
+                            </div>
+                            <span className={styles.cpName}>{person.name}</span>
+                            <span className={`${styles.cpCheck} ${styles.cpCheckOn}`}>
+                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className={styles.cpEmpty}>Немає учасників</div>
+                      )
+                    ) : searchLoading ? (
+                      <div className={styles.cpEmpty}>Пошук…</div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map((person) => {
+                        const active = isMemberOf(person.id);
                         return (
                           <button
                             key={person.id}
                             className={`${styles.cpItem} ${active ? styles.cpItemActive : ''}`}
-                            onClick={() => toggleContrib(person)}
+                            onClick={() => toggleMember(person)}
                           >
                             <div className={styles.cpAvatar} style={{ background: person.color }}>
                               {person.initials}
@@ -838,43 +946,18 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                             </span>
                           </button>
                         );
-                      })}
-                    {fullPool.filter((p) => p.name.toLowerCase().includes(contribSearch.toLowerCase())).length === 0 && (
+                      })
+                    ) : (
                       <div className={styles.cpEmpty}>Нікого не знайдено</div>
                     )}
                   </div>
 
-                  <div className={styles.cpDivider} />
-
-                  {/* Create new */}
-                  <div className={styles.cpCreate}>
-                    <div className={styles.cpCreateLabel}>Новий учасник</div>
-                    <input
-                      className={styles.cpCreateInput}
-                      placeholder="Ім'я та прізвище…"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && createContrib()}
-                    />
-                    <div className={styles.cpColors}>
-                      {PRESET_COLORS.map((c) => (
-                        <button
-                          key={c}
-                          className={`${styles.cpColor} ${newColor === c ? styles.cpColorActive : ''}`}
-                          style={{ background: c }}
-                          onClick={() => setNewColor(c)}
-                          title={c}
-                        />
-                      ))}
-                    </div>
-                    <button
-                      className={styles.cpCreateBtn}
-                      onClick={createContrib}
-                      disabled={!newName.trim()}
-                    >
-                      + Додати учасника
-                    </button>
-                  </div>
+                  {/* Error message */}
+                  {memberError && (
+                    <p style={{ fontSize: 11, color: '#EF4444', padding: '6px 12px', margin: 0 }}>
+                      {memberError}
+                    </p>
+                  )}
 
                 </div>
               )}
@@ -894,12 +977,17 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                 <button className={styles.navBtn} onClick={nextMonth}>›</button>
 
                 <div className={styles.calLegend}>
-                  {CONTRIBUTORS.map((c) => (
+                  {members.map((c) => (
                     <div key={c.id} className={styles.legendItem}>
                       <div className={styles.legendDot} style={{ background: c.color }} />
                       <span>{c.initials}</span>
                     </div>
                   ))}
+                  {calendarLoading && (
+                    <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>
+                      Завантаження…
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -929,10 +1017,10 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
               </div>
 
               {/* Day detail panel — below the grid, one at a time */}
-              {selectedDate && CALENDAR_DATA[selectedDate] && (
+              {selectedDate && calendarData[selectedDate] && (
                 <DayDetailPanel
                   dateStr={selectedDate}
-                  entries={CALENDAR_DATA[selectedDate]}
+                  entries={calendarData[selectedDate]}
                   onClose={() => setSelectedDate(null)}
                 />
               )}
@@ -1053,6 +1141,27 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                     </div>
                   </div>
 
+                  {/* Price */}
+                  <div className={styles.addFormRow}>
+                    <span className={styles.addFormLabel}>
+                      Сума <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(необов'язково)</span>
+                    </span>
+                    <div className={styles.priceInputRow}>
+                      <span className={styles.priceCurrency}>₴</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className={styles.priceInput}
+                        placeholder="0"
+                        value={draftPrice}
+                        onChange={(e) => setDraftPrice(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddTodo(); if (e.key === 'Escape') cancelAdd(); }}
+                      />
+                      <span className={styles.priceUnit}>UAH</span>
+                    </div>
+                  </div>
+
                   {/* Error */}
                   {taskError && (
                     <p style={{ fontSize: 12, color: '#EF4444', margin: '4px 0', fontWeight: 500 }}>
@@ -1089,6 +1198,39 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
           </div>
         </div>
       </div>
+
+      {/* ── Delete confirmation dialog ──────────────────────── */}
+      {showDeleteConfirm && (
+        <div className={styles.timePopupOverlay} onClick={() => setShowDeleteConfirm(false)}>
+          <div className={styles.deleteConfirmCard} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.deleteConfirmIcon}>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <path d="M3 6h16M8 6V4a1 1 0 011-1h4a1 1 0 011 1v2M9.5 10v6M12.5 10v6M4 6l1 13a1 1 0 001 1h10a1 1 0 001-1l1-13" stroke="#E11D48" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div className={styles.deleteConfirmTitle}>Видалити проєкт?</div>
+            <div className={styles.deleteConfirmSub}>«{proj.title}» буде безповоротно видалено.</div>
+            <div className={styles.deleteConfirmActions}>
+              <button
+                className={styles.addFormCancel}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Скасувати
+              </button>
+              <button
+                className={styles.deleteConfirmBtn}
+                onClick={async () => {
+                  setShowDeleteConfirm(false);
+                  if (onDeleteProject) await onDeleteProject(projectId);
+                  onNavigate(fromPage || 'projects');
+                }}
+              >
+                Видалити
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Time-tracking completion popup ─────────────────── */}
       {completingTask && (
@@ -1137,6 +1279,27 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                     Год
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <div className={styles.addFormRow}>
+              <label className={styles.addFormLabel}>Сума (необов'язково)</label>
+              <div className={styles.priceInputRow}>
+                <span className={styles.priceCurrency}>₴</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className={styles.priceInput}
+                  placeholder="0"
+                  value={trackPrice}
+                  onChange={(e) => setTrackPrice(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCompleteConfirm();
+                    if (e.key === 'Escape') handleCompleteCancel();
+                  }}
+                />
+                <span className={styles.priceUnit}>UAH</span>
               </div>
             </div>
 

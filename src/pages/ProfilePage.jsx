@@ -3,7 +3,9 @@ import Sidebar  from '../components/layout/Sidebar';
 import Badge    from '../components/common/Badge';
 import Button   from '../components/common/Button';
 import styles   from './ProfilePage.module.css';
-import { updateProfile, fetchUserSkills, fetchUserProjects } from '../api/users';
+import { ProjectIcon } from '../utils/projectIcon';
+import { updateProfile, fetchUserProjects, fetchUserTeam, addTeamMember, removeTeamMember } from '../api/users';
+import { searchUsers } from '../api/tasks';
 
 const BIO_MAX = 400;
 
@@ -62,24 +64,73 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
   const [feedback, setFeedback] = useState(null); // { type, msg }
 
   // Remote data
-  const [skills,       setSkills]       = useState([]);
   const [userProjects, setUserProjects] = useState([]);
   const [dataLoading,  setDataLoading]  = useState(true);
 
+  // Team state — persisted in the DB via /api/users/me/team
+  const [team,              setTeam]              = useState([]);
+  const [editingTeam,       setEditingTeam]       = useState(false);
+  const [teamSearch,        setTeamSearch]        = useState('');
+  const [teamResults,       setTeamResults]       = useState([]);
+  const [teamSearchLoading, setTeamSearchLoading] = useState(false);
+  const teamSectionRef = useRef(null);
+
   const firstNameRef = useRef(null);
 
-  // ── Fetch skills & projects for this user ──────────────────
+  // ── Fetch projects + team for this user ───────────────────
   useEffect(() => {
     if (!currentUser?.id) return;
     setDataLoading(true);
     Promise.all([
-      fetchUserSkills(currentUser.id).catch(() => []),
       fetchUserProjects(currentUser.id).catch(() => []),
-    ]).then(([sk, pr]) => {
-      setSkills(sk);
+      fetchUserTeam(currentUser.id).catch(() => []),
+    ]).then(([pr, tm]) => {
       setUserProjects(pr);
+      setTeam(tm.map((m) => ({
+        id:       m.id,
+        name:     `${m.first_name || ''} ${m.last_name || ''}`.trim(),
+        initials: `${(m.first_name || '')[0] || ''}${(m.last_name || '')[0] || ''}`.toUpperCase() || '??',
+        color:    m.avatar_color || '#6B7280',
+      })));
     }).finally(() => setDataLoading(false));
   }, [currentUser?.id]);
+
+  // ── Debounced user search for team editing ─────────────────
+  useEffect(() => {
+    const q = teamSearch.trim();
+    if (q.length < 2) { setTeamResults([]); return; }
+    const timer = setTimeout(async () => {
+      setTeamSearchLoading(true);
+      try {
+        const rows = await searchUsers(q);
+        setTeamResults(rows.map((m) => ({
+          id:       m.id,
+          name:     `${m.first_name || ''} ${m.last_name || ''}`.trim(),
+          initials: `${(m.first_name || '')[0] || ''}${(m.last_name || '')[0] || ''}`.toUpperCase() || '??',
+          color:    m.avatar_color || '#6B7280',
+        })));
+      } catch {
+        setTeamResults([]);
+      } finally {
+        setTeamSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [teamSearch]);
+
+  // ── Close team edit panel on outside click ─────────────────
+  useEffect(() => {
+    if (!editingTeam) return;
+    const handler = (e) => {
+      if (teamSectionRef.current && !teamSectionRef.current.contains(e.target)) {
+        setEditingTeam(false);
+        setTeamSearch('');
+        setTeamResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [editingTeam]);
 
   // Focus first input when entering edit mode
   useEffect(() => {
@@ -179,15 +230,29 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
 
   const bioLeft = BIO_MAX - draft.bio.length;
 
-  // ── Skills display (API or fallback placeholder) ──────────
-  const SKILL_COLORS = ['#FF6B9D', '#4CAF7D', '#F59E0B', '#8B5CF6', '#06B6D4'];
-  const displaySkills = skills.length > 0
-    ? skills.slice(0, 6).map((s, i) => ({
-        name:  s.name || s.skill_name || 'Навичка',
-        pct:   s.level_pct ?? s.proficiency_pct ?? 70,
-        color: SKILL_COLORS[i % SKILL_COLORS.length],
-      }))
-    : [];
+  // ── Team helpers ───────────────────────────────────────────
+  const isAdmin  = currentUser?.system_role === 'admin';
+  const isOnTeam = (id) => team.some((m) => m.id === id);
+
+  const addMember = async (person) => {
+    if (isOnTeam(person.id)) return;
+    setTeam((prev) => [...prev, person]); // optimistic add
+    try {
+      await addTeamMember(person.id);
+    } catch {
+      setTeam((prev) => prev.filter((m) => m.id !== person.id)); // revert
+    }
+  };
+
+  const removeMember = async (id) => {
+    const snapshot = team.find((m) => m.id === id);
+    setTeam((prev) => prev.filter((m) => m.id !== id)); // optimistic remove
+    try {
+      await removeTeamMember(id);
+    } catch {
+      if (snapshot) setTeam((prev) => [...prev, snapshot]); // revert
+    }
+  };
 
   // ── Projects history display ───────────────────────────────
   const STATUS_LABELS = {
@@ -195,7 +260,7 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
     completed: 'Завершено', archived: 'Архів',
   };
   const displayProjects = userProjects.slice(0, 5).map((p) => ({
-    icon:        p.icon    || '🌿',
+    icon:        p.icon    || 'Leaf',
     iconBg:      p.icon_bg || '#EAF7F0',
     title:       p.title,
     meta:        [
@@ -370,27 +435,102 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
           {/* ── Cards grid ── */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
-            {/* Skills */}
-            <div className="section-card">
-              <div className="section-head"><div className="section-title">Навички та внески</div></div>
-              {dataLoading ? (
-                <p style={{ fontSize: 13, color: 'var(--text3)', padding: '8px 0' }}>Завантаження…</p>
-              ) : displaySkills.length > 0 ? (
-                <div className={styles.skillBars}>
-                  {displaySkills.map((s) => (
-                    <div key={s.name} className={styles.skillRow}>
-                      <span className={styles.skillName}>{s.name}</span>
-                      <div className={styles.skillTrack}>
-                        <div className={styles.skillFill} style={{ width: `${s.pct}%`, background: s.color }} />
+            {/* Team */}
+            <div className="section-card" ref={teamSectionRef}>
+              <div className="section-head">
+                <div className="section-title">Команда</div>
+                {isAdmin && (
+                  <button
+                    className={`${styles.teamEditBtn} ${editingTeam ? styles.teamEditBtnActive : ''}`}
+                    onClick={() => { setEditingTeam((v) => !v); setTeamSearch(''); setTeamResults([]); }}
+                    title={editingTeam ? 'Закрити редагування' : 'Редагувати команду'}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <path d="M9 1.5a1.414 1.414 0 012 2L4 11H1.5V8.5L9 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Member list */}
+              {team.length > 0 ? (
+                <div className={styles.teamList}>
+                  {team.map((member) => (
+                    <div key={member.id} className={styles.teamMember}>
+                      <div className={styles.teamAvatar} style={{ background: member.color }}>
+                        {member.initials}
                       </div>
-                      <span className={styles.skillPct}>{s.pct}%</span>
+                      <span className={styles.teamMemberName}>{member.name}</span>
+                      {editingTeam && (
+                        <button
+                          className={styles.teamRemoveBtn}
+                          onClick={() => removeMember(member.id)}
+                          title="Видалити з команди"
+                        >×</button>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 13, color: 'var(--text3)', padding: '8px 0' }}>
-                  Навичок ще не додано.
+                <p style={{ fontSize: 13, color: 'var(--text3)', padding: '4px 0 8px' }}>
+                  Команда ще порожня.
                 </p>
+              )}
+
+              {/* Search panel — visible only in edit mode */}
+              {editingTeam && (
+                <div className={styles.teamSearchPanel}>
+                  <div className={styles.teamSearchWrap}>
+                    <svg className={styles.teamSearchIcon} width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.4"/>
+                      <path d="M9 9l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    </svg>
+                    <input
+                      className={styles.teamSearchInput}
+                      placeholder="Пошук за іменем або поштою…"
+                      value={teamSearch}
+                      onChange={(e) => setTeamSearch(e.target.value)}
+                      autoFocus
+                    />
+                    {teamSearch && (
+                      <button className={styles.teamSearchClear} onClick={() => { setTeamSearch(''); setTeamResults([]); }}>×</button>
+                    )}
+                  </div>
+
+                  {/* Results */}
+                  {teamSearch.trim().length >= 2 && (
+                    <div className={styles.teamSearchResults}>
+                      {teamSearchLoading ? (
+                        <div className={styles.teamSearchEmpty}>Пошук…</div>
+                      ) : teamResults.length > 0 ? (
+                        teamResults.map((person) => {
+                          const already = isOnTeam(person.id);
+                          return (
+                            <button
+                              key={person.id}
+                              className={`${styles.teamResultItem} ${already ? styles.teamResultActive : ''}`}
+                              onClick={() => already ? removeMember(person.id) : addMember(person)}
+                            >
+                              <div className={styles.teamAvatar} style={{ background: person.color, width: 28, height: 28, fontSize: 10 }}>
+                                {person.initials}
+                              </div>
+                              <span className={styles.teamMemberName}>{person.name}</span>
+                              {already ? (
+                                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                                  <path d="M1 4L3.5 6.5L9 1" stroke="var(--pk1)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              ) : (
+                                <span className={styles.teamResultAdd}>+</span>
+                              )}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className={styles.teamSearchEmpty}>Нікого не знайдено</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -431,11 +571,11 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
                   {displayProjects.map((h, i) => (
                     <div key={i} className={styles.historyItem}>
                       <span style={{
-                        fontSize: 20, background: h.iconBg, width: 36, height: 36,
+                        background: h.iconBg, width: 36, height: 36,
                         borderRadius: 8, display: 'inline-flex', alignItems: 'center',
                         justifyContent: 'center', flexShrink: 0,
                       }}>
-                        {h.icon}
+                        <ProjectIcon name={h.icon} bg={h.iconBg} size={18} />
                       </span>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{h.title}</p>

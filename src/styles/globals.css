@@ -386,7 +386,6 @@ button:focus:not(:focus-visible) {
 }
 .stat-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
 .stat-num { font-size: 28px; font-weight: 800; color: var(--text1); margin-bottom: 4px; }
-.stat-change { font-size: 11px; color: var(--gr1); font-weight: 600; }
 
 /* ── Section card ── */
 .section-card {

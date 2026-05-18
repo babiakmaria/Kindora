@@ -5,6 +5,30 @@ const EDITABLE_FIELDS = ['first_name', 'last_name', 'phone', 'city', 'country', 
 async function userRoutes(fastify) {
   const { db } = fastify
 
+  // ── GET /api/users/search?q=<query> ──────────────────────
+  // Returns up to 20 users whose name or email matches the query.
+  // Requires authentication so arbitrary visitors can't enumerate users.
+  fastify.get('/search', { onRequest: [fastify.authenticate] }, async (req) => {
+    const q = (req.query.q ?? '').trim()
+    if (q.length < 2) return []
+
+    const { rows } = await db.query(
+      `SELECT id, first_name, last_name, avatar_color, profile_role
+       FROM users
+       WHERE is_active = TRUE
+         AND (
+           first_name ILIKE $1 OR
+           last_name  ILIKE $1 OR
+           (first_name || ' ' || last_name) ILIKE $1 OR
+           email ILIKE $1
+         )
+       ORDER BY first_name, last_name
+       LIMIT 20`,
+      [`%${q}%`],
+    )
+    return rows
+  })
+
   // ── GET /api/users/:id ─────────────────────────────────────
   fastify.get('/:id', async (req, reply) => {
     const { rows } = await db.query('SELECT * FROM user_stats WHERE id = $1', [req.params.id])
@@ -106,6 +130,49 @@ async function userRoutes(fastify) {
       [req.params.skillId, req.user.id],
     )
     if (!rowCount) return reply.notFound('Навичку не знайдено')
+    return reply.code(204).send()
+  })
+
+  // ── GET /api/users/:id/team ────────────────────────────────
+  fastify.get('/:id/team', async (req) => {
+    const { rows } = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.avatar_color, u.profile_role
+       FROM team_members tm
+       JOIN users u ON u.id = tm.member_id
+       WHERE tm.owner_id = $1 AND u.is_active = TRUE
+       ORDER BY tm.added_at ASC`,
+      [req.params.id],
+    )
+    return rows
+  })
+
+  // ── POST /api/users/me/team  { member_id } ────────────────
+  fastify.post('/me/team', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+    const { member_id } = req.body ?? {}
+    if (!member_id) return reply.badRequest('member_id обовʼязковий')
+    if (member_id === req.user.id) return reply.badRequest('Не можна додати себе до команди')
+
+    await db.query(
+      `INSERT INTO team_members (owner_id, member_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [req.user.id, member_id],
+    )
+
+    const { rows } = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.avatar_color, u.profile_role
+       FROM users u WHERE u.id = $1`,
+      [member_id],
+    )
+    return reply.code(201).send(rows[0] ?? {})
+  })
+
+  // ── DELETE /api/users/me/team/:memberId ───────────────────
+  fastify.delete('/me/team/:memberId', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+    await db.query(
+      `DELETE FROM team_members WHERE owner_id = $1 AND member_id = $2`,
+      [req.user.id, req.params.memberId],
+    )
     return reply.code(204).send()
   })
 }

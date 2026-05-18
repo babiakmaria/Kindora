@@ -54,3 +54,42 @@ export const fetchProjectMembers = async (projectId) => {
   const res = await fetch(`${BASE}/projects/${projectId}/members`, { headers: headers() });
   return handleResponse(res);
 };
+
+// GET /api/users/search?q=<query>
+export const searchUsers = async (query) => {
+  const res = await fetch(
+    `${BASE}/users/search?q=${encodeURIComponent(query)}`,
+    { headers: headers() },
+  );
+  return handleResponse(res);
+};
+
+// POST /api/projects/:projectId/members  { user_id }
+export const addProjectMember = async (projectId, userId) => {
+  const res = await fetch(`${BASE}/projects/${projectId}/members`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ user_id: userId }),
+  });
+  return handleResponse(res);
+};
+
+// DELETE /api/projects/:projectId/members/:userId
+export const removeProjectMember = async (projectId, userId) => {
+  const res = await fetch(`${BASE}/projects/${projectId}/members/${userId}`, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  if (res.status === 204) return;
+  return handleResponse(res);
+};
+
+// GET /api/projects/:projectId/calendar?year=YYYY&month=M  (month is 1-based)
+// Returns { 'YYYY-MM-DD': [{ userId, initials, name, color, tasks, totalMinutes }] }
+export const fetchCalendar = async (projectId, year, month) => {
+  const res = await fetch(
+    `${BASE}/projects/${projectId}/calendar?year=${year}&month=${month}`,
+    { headers: headers() },
+  );
+  return handleResponse(res);
+};

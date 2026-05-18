@@ -14,7 +14,7 @@ import NotificationsPage   from './pages/NotificationsPage';
 import MyProjectsPage      from './pages/MyProjectsPage';
 import { PROJECTS }        from './data/data';
 import { getMe }           from './api/auth';
-import { fetchProjects, createProject, mapProject, updateProject } from './api/projects';
+import { fetchProjects, createProject, mapProject, updateProject, deleteProject, joinProject, leaveProject } from './api/projects';
 
 // ── Page registry ─────────────────────────────────────────
 const PAGES = {
@@ -123,10 +123,46 @@ function App() {
     }
   };
 
-  const handleToggleJoin = (id) => {
+  // Local-only state sync (no API call) — used to keep card progress in sync with task list
+  const handleSyncProject = (id, fields) => {
     setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, joined: !p.joined } : p))
+      prev.map((p) => (p.id === id ? { ...p, ...fields } : p))
     );
+  };
+
+  const handleToggleJoin = async (id) => {
+    const project = projects.find((p) => p.id === id);
+    if (!project) return;
+
+    const wasJoined = project.joined;
+
+    // Optimistic update
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, joined: !wasJoined } : p))
+    );
+
+    try {
+      if (wasJoined) {
+        await leaveProject(id);
+      } else {
+        await joinProject(id);
+      }
+    } catch (err) {
+      // Revert on failure
+      setProjects((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, joined: wasJoined } : p))
+      );
+      console.error('Не вдалося змінити участь у проєкті:', err.message);
+    }
+  };
+
+  const handleDeleteProject = async (id) => {
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await deleteProject(id);
+    } catch (err) {
+      console.error('Не вдалося видалити проєкт:', err.message);
+    }
   };
 
   const handleUpdateProject = async (id, data) => {
@@ -174,6 +210,8 @@ function App() {
       onAddProject={handleAddProject}
       onToggleJoin={handleToggleJoin}
       onUpdateProject={handleUpdateProject}
+      onDeleteProject={handleDeleteProject}
+      onSyncProject={handleSyncProject}
       project={selectedProject}
       fromPage={previousPage}
       user={selectedUser}

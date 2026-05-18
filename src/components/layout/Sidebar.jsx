@@ -87,15 +87,17 @@ const Sidebar = ({ activePage, onNavigate, searchable = false, onSearch, current
       <div className="sb-left">
         <div className="sb-logo">Kindora</div>
 
-        {USER_NAV.map((item) => (
-          <div
-            key={item.path}
-            className={`sb-link${activePage === item.path ? ' active' : ''}`}
-            onClick={() => onNavigate(item.path)}
-          >
-            {item.label}
-          </div>
-        ))}
+        {USER_NAV
+          .filter((item) => item.path !== 'admin-analytics' || currentUser?.system_role === 'admin')
+          .map((item) => (
+            <div
+              key={item.path}
+              className={`sb-link${activePage === item.path ? ' active' : ''}`}
+              onClick={() => onNavigate(item.path)}
+            >
+              {item.label}
+            </div>
+          ))}
 
         {searchable && (
           <div ref={containerRef} className={`sb-search${searchOpen ? ' sb-search--open' : ''}`}>
@@ -139,7 +141,7 @@ const Sidebar = ({ activePage, onNavigate, searchable = false, onSearch, current
           onClick={() => onNavigate('profile')}
           title="Перейти до мого профілю"
         >
-          <Avatar initials={getInitials(currentUser)} />
+          <Avatar initials={getInitials(currentUser)} gradient={currentUser?.avatar_color} />
           <div className="avatar-info">
             <p>{getDisplayName(currentUser)}</p>
             <span>{getRoleLabel(currentUser)}</span>

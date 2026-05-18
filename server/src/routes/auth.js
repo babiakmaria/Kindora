@@ -3,12 +3,19 @@
 const bcrypt = require('bcrypt')
 const { registerSchema, loginSchema } = require('../schemas/auth')
 
+// Palette shared with the frontend — matches PRESET_COLORS used for member avatars
+const AVATAR_COLORS = [
+  '#FF6B9D', '#4CAF7D', '#8B5CF6', '#F59E0B', '#06B6D4',
+  '#10B981', '#F97316', '#6366F1', '#EC4899', '#14B8A6',
+]
+const randomAvatarColor = () => AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]
+
 async function authRoutes(fastify) {
   const { db } = fastify
 
   // POST /api/auth/register
   fastify.post('/register', { schema: registerSchema }, async (req, reply) => {
-    const { first_name, last_name, email, password } = req.body
+    const { first_name, last_name, email, password, system_role = 'volunteer' } = req.body
 
     const existing = await db.query('SELECT id FROM users WHERE email = $1', [email])
     if (existing.rows.length) {
@@ -16,11 +23,13 @@ async function authRoutes(fastify) {
     }
 
     const password_hash = await bcrypt.hash(password, 12)
+    const avatar_color  = randomAvatarColor()
+
     const { rows } = await db.query(
-      `INSERT INTO users (first_name, last_name, email, password_hash, agreed_terms)
-       VALUES ($1, $2, $3, $4, TRUE)
-       RETURNING id, first_name, last_name, email, system_role, joined_at`,
-      [first_name, last_name, email, password_hash],
+      `INSERT INTO users (first_name, last_name, email, password_hash, system_role, avatar_color, agreed_terms)
+       VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+       RETURNING id, first_name, last_name, email, system_role, avatar_color, joined_at`,
+      [first_name, last_name, email, password_hash, system_role, avatar_color],
     )
 
     const user = rows[0]
@@ -33,7 +42,7 @@ async function authRoutes(fastify) {
     const { email, password } = req.body
 
     const { rows } = await db.query(
-      `SELECT id, first_name, last_name, email, password_hash, system_role
+      `SELECT id, first_name, last_name, email, password_hash, system_role, avatar_color
        FROM users WHERE email = $1 AND is_active = TRUE`,
       [email],
     )

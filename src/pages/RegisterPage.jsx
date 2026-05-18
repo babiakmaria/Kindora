@@ -39,6 +39,7 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
         lastName:  form.lastName,
         email:     form.email,
         password:  form.password,
+        role:      form.role,
       });
       onLogin(data);
       onNavigate(form.role === 'admin' ? 'admin' : 'projects');
