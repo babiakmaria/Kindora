@@ -35,6 +35,15 @@ export const fetchUserProjects = async (userId) => {
   return handleResponse(res);
 };
 
+// GET /api/users/:id/activity?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
+export const fetchUserActivity = async (userId, dateFrom, dateTo) => {
+  const params = new URLSearchParams();
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo)   params.set('date_to',   dateTo);
+  const res = await fetch(`${BASE}/users/${userId}/activity?${params}`, { headers: headers() });
+  return handleResponse(res);
+};
+
 // GET /api/users/:id/team
 export const fetchUserTeam = async (userId) => {
   const res = await fetch(`${BASE}/users/${userId}/team`, { headers: headers() });

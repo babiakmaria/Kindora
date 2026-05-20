@@ -106,13 +106,13 @@ async function projectRoutes(fastify) {
 
   // ── POST /api/projects ─────────────────────────────────────
   fastify.post('/', { onRequest: [fastify.authenticate], schema: createProjectSchema }, async (req, reply) => {
-    const { title, description, icon, icon_bg, category_id, start_date, end_date, tag_ids = [] } = req.body
+    const { title, description, location, icon, icon_bg, category_id, start_date, end_date, tag_ids = [] } = req.body
     const userId = req.user.id
 
     const { rows: inserted } = await db.query(
-      `INSERT INTO projects (title, description, icon, icon_bg, category_id, start_date, end_date, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [title, description, icon, icon_bg, category_id, start_date, end_date, userId],
+      `INSERT INTO projects (title, description, location, icon, icon_bg, category_id, start_date, end_date, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [title, description, location, icon, icon_bg, category_id, start_date, end_date, userId],
     )
     const projectId = inserted[0].id
 
@@ -348,6 +348,8 @@ async function projectRoutes(fastify) {
       )
     }
 
+    notifyMembers(req.params.id, req.user.id, 'task_added', { task_title: title.trim() }).catch(() => {})
+
     return reply.code(201).send(rows[0])
   })
 
@@ -475,6 +477,11 @@ async function projectRoutes(fastify) {
           [hoursToLog, projectId, req.user.id],
         )
       }
+
+      const completedPayload = { task_title: updatedTask.title }
+      if (hoursToLog !== null) completedPayload.hours = hoursToLog
+      if (fields.price != null) completedPayload.price = parseFloat(fields.price)
+      notifyMembers(projectId, req.user.id, 'task_completed', completedPayload).catch(() => {})
     }
 
     return updatedTask
@@ -482,10 +489,21 @@ async function projectRoutes(fastify) {
 
   // ── DELETE /api/projects/:id/tasks/:taskId ────────────────
   fastify.delete('/:id/tasks/:taskId', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+    const projectId = req.params.id
+    const taskId    = req.params.taskId
+
     // Only members can delete; additionally only task creator or project owner can delete
-    if (!(await isMember(req.params.id, req.user.id))) {
+    if (!(await isMember(projectId, req.user.id))) {
       return reply.forbidden('Тільки учасники проєкту можуть видаляти задачі')
     }
+
+    // Fetch task state before deleting so we can revert stats if it was completed
+    const { rows: taskRows } = await db.query(
+      `SELECT is_done, logged_hours, assignee_id, created_by, title FROM tasks WHERE id = $1 AND project_id = $2`,
+      [taskId, projectId],
+    )
+    const task = taskRows[0]
+    if (!task) return reply.notFound('Задачу не знайдено')
 
     const { rowCount } = await db.query(
       `DELETE FROM tasks
@@ -493,9 +511,45 @@ async function projectRoutes(fastify) {
          AND (created_by = $3 OR $3 IN (
            SELECT user_id FROM project_members WHERE project_id = $2 AND role = 'owner' AND is_active = TRUE
          ))`,
-      [req.params.taskId, req.params.id, req.user.id],
+      [taskId, projectId, req.user.id],
     )
     if (!rowCount) return reply.forbidden('Задачу не знайдено або недостатньо прав для видалення')
+
+    // Roll back stats only for tasks that were completed
+    if (task.is_done) {
+      // Use the same priority order as the completion handler:
+      // assignee_id → created_by → current user (req.user.id)
+      const targetUserId = task.assignee_id || task.created_by || req.user.id
+
+      // Undo the tasks_completed counter for whoever the task was attributed to
+      await db.query(
+        `UPDATE project_members
+         SET tasks_completed = GREATEST(0, tasks_completed - 1)
+         WHERE project_id = $1 AND user_id = $2`,
+        [projectId, targetUserId],
+      )
+
+      // If hours were logged, find who logged them and revert their hours
+      if (task.logged_hours) {
+        const { rows: logRows } = await db.query(
+          `SELECT id, user_id FROM activity_logs
+           WHERE project_id = $1 AND description = $2 AND hours_logged = $3
+           ORDER BY created_at DESC LIMIT 1`,
+          [projectId, `Задача: ${task.title}`, task.logged_hours],
+        )
+        if (logRows[0]) {
+          const loggerId = logRows[0].user_id
+          await db.query(`DELETE FROM activity_logs WHERE id = $1`, [logRows[0].id]).catch(() => {})
+          await db.query(
+            `UPDATE project_members
+             SET hours_contributed = GREATEST(0, hours_contributed - $1)
+             WHERE project_id = $2 AND user_id = $3`,
+            [task.logged_hours, projectId, loggerId],
+          ).catch(() => {})
+        }
+      }
+    }
+
     return reply.code(204).send()
   })
 

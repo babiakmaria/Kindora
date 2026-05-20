@@ -3,10 +3,10 @@ import Sidebar from '../components/layout/Sidebar';
 import StatCard from '../components/common/StatCard';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
-import { PROJECTS } from '../data/data';
 import styles from './AnalyticsPage.module.css';
 import { ProjectIcon } from '../utils/projectIcon';
-import { fetchAnalyticsStats, fetchProjectsByCategory, fetchKeyMetrics, fetchReport } from '../api/analytics';
+import { fetchAnalyticsStats, fetchProjectsByCategory, fetchKeyMetrics, fetchReport, fetchVolunteerDistribution } from '../api/analytics';
+import { fetchProjects, mapProject } from '../api/projects';
 import SpendingChart from '../components/common/SpendingChart';
 
 // Static accent colors and labels for the four overview stat cards.
@@ -29,21 +29,36 @@ const CATEGORY_COLORS = {
 };
 
 
-const DONUT_DATA = [
-  { label: 'Нові волонтери',     pct: 42, color: '#FF6B9D', dashArr: '60 144', offset: 0    },
-  { label: 'Постійні учасники',  pct: 38, color: '#4CAF7D', dashArr: '55 144', offset: -60  },
-  { label: 'Разові учасники',    pct: 20, color: '#F59E0B', dashArr: '29 144', offset: -115 },
+const DONUT_CIRCUMFERENCE = 2 * Math.PI * 36;
+
+const DONUT_SEGMENTS_TEMPLATE = [
+  { label: 'Нові волонтери',    key: 'newVolunteers',       color: '#FF6B9D' },
+  { label: 'Постійні учасники', key: 'permanentMembers',    color: '#4CAF7D' },
+  { label: 'Разові учасники',   key: 'oneTimeParticipants', color: '#F59E0B' },
 ];
 
-// KEY_METRICS is now derived from the API — see keyMetrics state below
+function buildDonutSegments(dist) {
+  const total = dist?.total || 0;
+  let offsetAcc = 0;
+  return DONUT_SEGMENTS_TEMPLATE.map((seg) => {
+    const count = dist?.[seg.key] ?? 0;
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    const arc = (pct / 100) * DONUT_CIRCUMFERENCE;
+    const dashArr = `${arc.toFixed(1)} ${DONUT_CIRCUMFERENCE.toFixed(1)}`;
+    const offset = -offsetAcc;
+    offsetAcc += arc;
+    return { ...seg, pct, dashArr, offset };
+  });
+}
 
-const BASE_INSIGHTS = PROJECTS.slice(0, 6).map((p) => ({
+// Shapes a mapped project into the row format used by the details table.
+const toInsightRow = (p) => ({
   ...p,
   volunteers: p.members,
-  activities: Math.round(p.progress / 10 + 2),
+  activities: p.activityCount,
   trend:      p.progress >= 70 ? '↑' : p.progress >= 40 ? '→' : '↓',
   trendColor: p.progress >= 70 ? '#4CAF7D' : p.progress >= 40 ? '#F59E0B' : '#FF6B9D',
-}));
+});
 
 const ProgressCell = ({ pct, color }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -86,12 +101,13 @@ const exportToCsv = (rows) => {
 };
 
 const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
-  const [filtered,       setFiltered]       = useState(BASE_INSIGHTS);
+  const [filtered,       setFiltered]       = useState([]);
   const [exporting,      setExporting]      = useState(false);
 
-  const [statsData,    setStatsData]    = useState(null);
-  const [categoryBars, setCategoryBars] = useState([]);
-  const [keyMetrics,   setKeyMetrics]   = useState(null);
+  const [statsData,         setStatsData]         = useState(null);
+  const [categoryBars,      setCategoryBars]      = useState([]);
+  const [keyMetrics,        setKeyMetrics]        = useState(null);
+  const [volunteerDist,     setVolunteerDist]     = useState(null);
 
   useEffect(() => {
     fetchAnalyticsStats()
@@ -116,7 +132,22 @@ const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
     fetchKeyMetrics()
       .then(setKeyMetrics)
       .catch(() => {});
-  }, []);
+
+    fetchVolunteerDistribution()
+      .then(setVolunteerDist)
+      .catch(() => {});
+
+    fetchProjects()
+      .then((raw) => {
+        const userId = currentUser?.id;
+        const rows = raw
+          .map((p) => mapProject(p, userId))
+          .filter((p) => p.createdBy === userId && p.status !== 'archived')
+          .map(toInsightRow);
+        setFiltered(rows);
+      })
+      .catch(() => {});
+  }, [currentUser?.id]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -201,32 +232,42 @@ const AnalyticsPage = ({ onNavigate, currentUser, onLogout }) => {
                 <div className="section-title">Розподіл волонтерів</div>
               </div>
               <div className={styles.donutWrap}>
-                <svg width="110" height="110" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="36" fill="none" stroke="#F3F4F6" strokeWidth="14" />
-                  {DONUT_DATA.map((c) => (
-                    <circle
-                      key={c.label}
-                      cx="50" cy="50" r="36"
-                      fill="none"
-                      stroke={c.color}
-                      strokeWidth="14"
-                      strokeDasharray={c.dashArr}
-                      strokeDashoffset={c.offset}
-                      strokeLinecap="round"
-                    />
-                  ))}
-                  <text x="50" y="47" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1A1A2E">247</text>
-                  <text x="50" y="59" textAnchor="middle" fontSize="7.5" fill="#6B7280">волонтерів</text>
-                </svg>
-                <div className={styles.legend}>
-                  {DONUT_DATA.map((c) => (
-                    <div key={c.label} className={styles.legendItem}>
-                      <span className={styles.legendDot} style={{ background: c.color }} />
-                      <span>{c.label}</span>
-                      <span className={styles.legendPct}>{c.pct}%</span>
-                    </div>
-                  ))}
-                </div>
+                {(() => {
+                  const segments = buildDonutSegments(volunteerDist);
+                  const total = volunteerDist?.total ?? '—';
+                  return (
+                    <>
+                      <svg width="110" height="110" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="36" fill="none" stroke="#F3F4F6" strokeWidth="14" />
+                        {segments.map((c) => (
+                          <circle
+                            key={c.label}
+                            cx="50" cy="50" r="36"
+                            fill="none"
+                            stroke={c.color}
+                            strokeWidth="14"
+                            strokeDasharray={c.dashArr}
+                            strokeDashoffset={c.offset}
+                            strokeLinecap="round"
+                          />
+                        ))}
+                        <text x="50" y="47" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1A1A2E">{total}</text>
+                        <text x="50" y="59" textAnchor="middle" fontSize="7.5" fill="#6B7280">волонтерів</text>
+                      </svg>
+                      <div className={styles.legend}>
+                        {segments.map((c) => (
+                          <div key={c.label} className={styles.legendItem}>
+                            <span className={styles.legendDot} style={{ background: c.color }} />
+                            <span>{c.label}</span>
+                            <span className={styles.legendPct}>
+                              {volunteerDist ? `${c.pct}%` : '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

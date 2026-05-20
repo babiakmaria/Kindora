@@ -42,7 +42,15 @@
   height: 80px;
   margin-bottom: 8px;
 }
-.bar { flex: 1; border-radius: 4px 4px 0 0; }
+/* Each month column: two bars side-by-side */
+.barGroup {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+.bar { flex: 1; border-radius: 4px 4px 0 0; min-height: 0; transition: height 0.3s ease; }
 .chartLabels {
   display: flex;
   gap: 6px;
@@ -50,6 +58,19 @@
   color: #9CA3AF;
 }
 .chartLabels span { flex: 1; text-align: center; }
+/* Legend inside section-head */
+.chartLegend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
 .miniStat {
   flex: 1;
   border-radius: 10px;

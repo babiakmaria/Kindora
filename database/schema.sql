@@ -47,7 +47,6 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TYPE user_role_type AS ENUM (
     'volunteer',
-    'organizer',
     'admin'
 );
 
@@ -84,7 +83,9 @@ CREATE TYPE notification_type AS ENUM (
     'contribution_added',
     'project_updated',
     'application_reviewed',
-    'task_assigned'
+    'task_assigned',
+    'task_added',
+    'task_completed'
 );
 
 -- ============================================================
@@ -147,7 +148,7 @@ CREATE TABLE users (
 
 COMMENT ON TABLE  users              IS 'Зареєстровані користувачі платформи';
 COMMENT ON COLUMN users.avatar_color IS 'HEX-колір fallback-аватару з ініціалами';
-COMMENT ON COLUMN users.system_role  IS 'volunteer | organizer | admin';
+COMMENT ON COLUMN users.system_role  IS 'volunteer | admin';
 COMMENT ON COLUMN users.profile_role IS 'Відображувана роль у публічному профілі';
 
 CREATE INDEX idx_users_email       ON users (email);
@@ -186,7 +187,7 @@ CREATE TABLE projects (
     id              UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
     title           VARCHAR(255)   NOT NULL CHECK (LENGTH(TRIM(title)) >= 3),
     description     TEXT,
-    icon            VARCHAR(10)    NOT NULL DEFAULT '📌',
+    icon            VARCHAR(50)    NOT NULL DEFAULT 'Leaf',
     icon_bg         VARCHAR(7)     NOT NULL DEFAULT '#EEF2FF'
                                    CHECK (icon_bg ~ '^#[0-9A-Fa-f]{6}$'),
     status          project_status NOT NULL DEFAULT 'new',
@@ -195,6 +196,7 @@ CREATE TABLE projects (
     start_date      DATE,
     end_date        DATE,
     due_date        DATE,
+    location        VARCHAR(255),
     created_by      UUID           NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
     created_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
@@ -415,6 +417,7 @@ SELECT
     p.description,
     p.icon,
     p.icon_bg,
+    p.location,
     -- Derive live status from task counts; preserve terminal states.
     CASE
         WHEN p.status IN ('completed', 'archived')    THEN p.status

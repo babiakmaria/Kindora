@@ -5,6 +5,16 @@ const EDITABLE_FIELDS = ['first_name', 'last_name', 'phone', 'city', 'country', 
 async function userRoutes(fastify) {
   const { db } = fastify
 
+  // ── GET /api/users — all active users (admin only) ───────
+  fastify.get('/', { onRequest: [fastify.authenticate] }, async (req, reply) => {
+    if (req.user.role !== 'admin') return reply.forbidden()
+    const { rows } = await db.query(
+      `SELECT id, first_name, last_name, email, avatar_color, profile_role, system_role, joined_at
+       FROM users WHERE is_active = TRUE ORDER BY first_name, last_name`,
+    )
+    return rows
+  })
+
   // ── GET /api/users/search?q=<query> ──────────────────────
   // Returns up to 20 users whose name or email matches the query.
   // Requires authentication so arbitrary visitors can't enumerate users.
@@ -103,34 +113,6 @@ async function userRoutes(fastify) {
       [req.user.id, ...Object.values(fields)],
     )
     return rows[0]
-  })
-
-  // ── POST /api/users/me/skills ──────────────────────────────
-  fastify.post('/me/skills', { onRequest: [fastify.authenticate] }, async (req, reply) => {
-    const { name, level_pct, color } = req.body
-    if (!name?.trim()) return reply.badRequest('name обовʼязковий')
-    if (level_pct === undefined || level_pct < 0 || level_pct > 100) {
-      return reply.badRequest('level_pct має бути від 0 до 100')
-    }
-
-    const { rows } = await db.query(
-      `INSERT INTO user_skills (user_id, name, level_pct, color)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (user_id, name) DO UPDATE SET level_pct = $3, color = $4
-       RETURNING *`,
-      [req.user.id, name.trim(), level_pct, color ?? '#4F46E5'],
-    )
-    return reply.code(201).send(rows[0])
-  })
-
-  // ── DELETE /api/users/me/skills/:skillId ──────────────────
-  fastify.delete('/me/skills/:skillId', { onRequest: [fastify.authenticate] }, async (req, reply) => {
-    const { rowCount } = await db.query(
-      `DELETE FROM user_skills WHERE id = $1 AND user_id = $2`,
-      [req.params.skillId, req.user.id],
-    )
-    if (!rowCount) return reply.notFound('Навичку не знайдено')
-    return reply.code(204).send()
   })
 
   // ── GET /api/users/:id/team ────────────────────────────────

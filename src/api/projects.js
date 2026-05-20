@@ -44,6 +44,7 @@ export const mapProject = (p, currentUserId) => ({
   // is_member comes from the server when the request was authenticated;
   // fall back to created_by check for any unauthenticated responses
   joined:        p.is_member ?? (currentUserId != null && p.created_by === currentUserId),
+  location:      p.location  || '',
   createdBy:     p.created_by,
   tags:          Array.isArray(p.tags) ? p.tags : [],
   startDate:     p.start_date,

@@ -1,93 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import styles  from './NotificationsPage.module.css';
+import { fetchNotifications, markNotifRead as apiMarkRead, markAllNotifsRead as apiMarkAll } from '../api/notifications';
 
-// ── Notification data ────────────────────────────────────────
-const INITIAL_NOTIFS = [
-  // Today
-  {
-    id: 1, type: 'join', group: 'today', read: false,
-    user: 'Анна Коваленко', initials: 'АК',
-    avatarBg: 'linear-gradient(135deg,#4CAF7D,#06B6D4)',
-    project: 'EcoTracker', time: '2 години тому',
-  },
-  {
-    id: 2, type: 'contribution', group: 'today', read: false,
-    user: 'Марк Дяченко', initials: 'МД',
-    avatarBg: 'linear-gradient(135deg,#FF6B9D,#F59E0B)',
-    project: 'EcoTracker', time: '5 годин тому',
-  },
-  {
-    id: 3, type: 'leave', group: 'today', read: true,
-    user: 'Іван Савченко', initials: 'ІС',
-    avatarBg: 'linear-gradient(135deg,#8B5CF6,#06B6D4)',
-    project: 'Громадська бібліотека', time: '6 годин тому',
-  },
-  // Yesterday
-  {
-    id: 4, type: 'join', group: 'yesterday', read: true,
-    user: 'Олена Василенко', initials: 'ОВ',
-    avatarBg: 'linear-gradient(135deg,#F59E0B,#FF6B9D)',
-    project: 'Відновлення міського парку', time: 'Вчора, 14:30',
-  },
-  {
-    id: 5, type: 'contribution', group: 'yesterday', read: true,
-    user: 'Дмитро Кравченко', initials: 'ДК',
-    avatarBg: 'linear-gradient(135deg,#4CAF7D,#8B5CF6)',
-    project: 'EcoTracker', time: 'Вчора, 09:15',
-  },
-  // Earlier
-  {
-    id: 6, type: 'join', group: 'earlier', read: true,
-    user: "Софія Литвин", initials: 'СЛ',
-    avatarBg: 'linear-gradient(135deg,#FF6B9D,#8B5CF6)',
-    project: 'Кампанія з переробки', time: '3 квіт.',
-  },
-  {
-    id: 7, type: 'leave', group: 'earlier', read: true,
-    user: 'Богдан Мельник', initials: 'БМ',
-    avatarBg: 'linear-gradient(135deg,#06B6D4,#4CAF7D)',
-    project: 'Відновлення міського парку', time: '1 квіт.',
-  },
-];
+// ── Helpers ──────────────────────────────────────────────────
+const getGroup = (isoStr) => {
+  const d    = new Date(isoStr);
+  const now  = new Date();
+  const today     = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d >= today)     return 'today';
+  if (d >= yesterday) return 'yesterday';
+  return 'earlier';
+};
 
-// ── Type config ──────────────────────────────────────────────
+const formatTime = (isoStr) => {
+  const d       = new Date(isoStr);
+  const diffMin = Math.floor((Date.now() - d) / 60000);
+  if (diffMin < 1)  return 'щойно';
+  if (diffMin < 60) return `${diffMin} хв тому`;
+  const h = Math.floor(diffMin / 60);
+  if (h < 24) return `${h} год тому`;
+  const months = ['січ.','лют.','бер.','квіт.','трав.','черв.','лип.','серп.','вер.','жовт.','лист.','груд.'];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+};
+
+const fmtHours = (h) => {
+  if (!h || h <= 0) return '';
+  const totalMin = Math.round(h * 60);
+  if (totalMin < 60) return `${totalMin}хв`;
+  const hrs = Math.floor(totalMin / 60);
+  const min = totalMin % 60;
+  return min > 0 ? `${hrs}г ${min}хв` : `${hrs}г`;
+};
+
+// ── Notification type config ──────────────────────────────────
 const TYPE = {
   join: {
     icon: '+',
     bg: '#EAF7F0',
     color: '#2E7D52',
-    buildMsg: (user, project) => (
-      <><strong>{user}</strong> приєднався до вашого проєкту <em>{project}</em></>
+    buildMsg: (n) => (
+      <><strong>{n.userName}</strong> приєднався до проєкту <em>{n.projectTitle}</em></>
     ),
   },
-  contribution: {
-    icon: '↑',
-    bg: '#FFF0F5',
-    color: '#FF6B9D',
-    buildMsg: (user, project) => (
-      <><strong>{user}</strong> додав внесок до <em>{project}</em></>
+  task_added: {
+    icon: '✦',
+    bg: '#EEF2FF',
+    color: '#4F46E5',
+    buildMsg: (n) => (
+      <><strong>{n.userName}</strong> додав завдання «{n.taskTitle}» до проєкту <em>{n.projectTitle}</em></>
     ),
   },
-  leave: {
-    icon: '→',
+  task_completed: {
+    icon: '✓',
     bg: '#FFF8E1',
     color: '#B45309',
-    buildMsg: (user, project) => (
-      <><strong>{user}</strong> покинув ваш проєкт <em>{project}</em></>
+    buildMsg: (n) => (
+      <><strong>{n.userName}</strong> виконав завдання «{n.taskTitle}» у проєкті <em>{n.projectTitle}</em></>
+    ),
+  },
+  task_completed_time: {
+    icon: '⏱',
+    bg: '#FFF0F5',
+    color: '#FF6B9D',
+    buildMsg: (n) => (
+      <><strong>{n.userName}</strong> виконав завдання «{n.taskTitle}» у проєкті <em>{n.projectTitle}</em> · {fmtHours(n.loggedHours)}</>
+    ),
+  },
+  task_completed_price: {
+    icon: '₴',
+    bg: '#FFF0F5',
+    color: '#FF6B9D',
+    buildMsg: (n) => (
+      <><strong>{n.userName}</strong> виконав завдання «{n.taskTitle}» у проєкті <em>{n.projectTitle}</em> · ₴{n.price?.toLocaleString('uk-UA')}</>
+    ),
+  },
+  task_completed_both: {
+    icon: '✓',
+    bg: '#FFF0F5',
+    color: '#FF6B9D',
+    buildMsg: (n) => (
+      <><strong>{n.userName}</strong> виконав завдання «{n.taskTitle}» у проєкті <em>{n.projectTitle}</em> · {fmtHours(n.loggedHours)} · ₴{n.price?.toLocaleString('uk-UA')}</>
     ),
   },
 };
 
 const GROUPS = [
-  { key: 'today',     label: 'Сьогодні'  },
-  { key: 'yesterday', label: 'Вчора'     },
-  { key: 'earlier',   label: 'Раніше'    },
+  { key: 'today',     label: 'Сьогодні' },
+  { key: 'yesterday', label: 'Вчора'    },
+  { key: 'earlier',   label: 'Раніше'   },
 ];
 
-// ── Single notification item ─────────────────────────────────
+// ── Single notification item ──────────────────────────────────
 const NotifItem = ({ notif, onMarkRead, onViewProject }) => {
-  const t = TYPE[notif.type];
+  const t = TYPE[notif.type] || TYPE.join;
 
   return (
     <div
@@ -106,11 +114,11 @@ const NotifItem = ({ notif, onMarkRead, onViewProject }) => {
 
       {/* Body */}
       <div className={styles.body}>
-        <p className={styles.msg}>{t.buildMsg(notif.user, notif.project)}</p>
+        <p className={styles.msg}>{t.buildMsg(notif)}</p>
         <div className={styles.meta}>
-          <span className={styles.time}>{notif.time}</span>
+          <span className={styles.time}>{formatTime(notif.date)}</span>
           <span className={styles.projectTag} style={{ background: t.bg, color: t.color }}>
-            {notif.project}
+            {notif.projectTitle}
           </span>
         </div>
       </div>
@@ -120,7 +128,7 @@ const NotifItem = ({ notif, onMarkRead, onViewProject }) => {
         {!notif.read && <span className={styles.unreadDot} />}
         <button
           className={`btn btn-ghost btn-sm ${styles.viewBtn}`}
-          onClick={(e) => { e.stopPropagation(); onViewProject(notif.project); }}
+          onClick={(e) => { e.stopPropagation(); onViewProject(notif.projectTitle); }}
         >
           Переглянути
         </button>
@@ -131,17 +139,33 @@ const NotifItem = ({ notif, onMarkRead, onViewProject }) => {
 
 // ── Page ─────────────────────────────────────────────────────
 const NotificationsPage = ({ onNavigate, currentUser, onLogout }) => {
-  const [notifs, setNotifs] = useState(INITIAL_NOTIFS);
-  const [tab,    setTab]    = useState('all');
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('all');
 
-  const unreadCount = notifs.filter((n) => !n.read).length;
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchNotifications()
+      .then(setNotifications)
+      .catch(() => setNotifications([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const markRead    = (id)  => setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
-  const markAllRead = ()    => setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+  useEffect(() => { load(); }, [load]);
 
-  const visible = tab === 'unread' ? notifs.filter((n) => !n.read) : notifs;
+  const handleMarkRead = (id) => {
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+    apiMarkRead(id).catch(() => load());
+  };
 
-  const groupedEmpty = GROUPS.every((g) => !visible.some((n) => n.group === g.key));
+  const handleMarkAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    apiMarkAll().catch(() => load());
+  };
+
+  const unreadCount  = notifications.filter((n) => !n.read).length;
+  const visible      = tab === 'unread' ? notifications.filter((n) => !n.read) : notifications;
+  const groupedEmpty = !loading && GROUPS.every((g) => !visible.some((n) => getGroup(n.date) === g.key));
 
   return (
     <div className="app-layout">
@@ -155,13 +179,13 @@ const NotificationsPage = ({ onNavigate, currentUser, onLogout }) => {
             <div>
               <div className="page-title">Сповіщення</div>
               <div className="page-sub">
-                {unreadCount > 0
-                  ? `${unreadCount} непрочитаних сповіщень`
+                {loading ? 'Завантаження…'
+                  : unreadCount > 0 ? `${unreadCount} непрочитаних сповіщень`
                   : 'Усі сповіщення прочитано'}
               </div>
             </div>
             {unreadCount > 0 && (
-              <button className="btn btn-ghost btn-sm" onClick={markAllRead}>
+              <button className="btn btn-ghost btn-sm" onClick={handleMarkAllRead}>
                 ✓ Позначити всі як прочитані
               </button>
             )}
@@ -186,7 +210,6 @@ const NotificationsPage = ({ onNavigate, currentUser, onLogout }) => {
           {/* Empty state */}
           {groupedEmpty ? (
             <div className={styles.empty}>
-              <div className={styles.emptyIcon}>🔔</div>
               <div className={styles.emptyTitle}>Немає сповіщень</div>
               <div className={styles.emptyDesc}>
                 {tab === 'unread'
@@ -196,7 +219,7 @@ const NotificationsPage = ({ onNavigate, currentUser, onLogout }) => {
             </div>
           ) : (
             GROUPS.map((g) => {
-              const items = visible.filter((n) => n.group === g.key);
+              const items = visible.filter((n) => getGroup(n.date) === g.key);
               if (!items.length) return null;
               return (
                 <div key={g.key} className={styles.group}>
@@ -206,7 +229,7 @@ const NotificationsPage = ({ onNavigate, currentUser, onLogout }) => {
                       <NotifItem
                         key={n.id}
                         notif={n}
-                        onMarkRead={markRead}
+                        onMarkRead={handleMarkRead}
                         onViewProject={() => onNavigate('projects')}
                       />
                     ))}

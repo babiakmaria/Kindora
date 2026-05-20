@@ -8,6 +8,7 @@ import { ICON_OPTIONS, ICON_BG_MAP, ProjectIcon } from '../../utils/projectIcon'
 const EMPTY_FORM = {
   title:       '',
   description: '',
+  location:    '',
   startDate:   '',
   endDate:     '',
   icon:        'Leaf',
@@ -27,6 +28,9 @@ const validate = (form) => {
   }
   if (form.endDate && form.startDate && form.endDate < form.startDate) {
     errors.endDate = 'Дата завершення має бути після дати початку.';
+  }
+  if (!form.location.trim()) {
+    errors.location = 'Вкажіть місцезнаходження проєкту.';
   }
   if (!form.categoryId) {
     errors.categoryId = 'Оберіть категорію.';
@@ -87,6 +91,7 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser }) => {
       await onSubmit({
         title:       form.title.trim(),
         description: form.description.trim() || undefined,
+        location:    form.location.trim(),
         icon:        form.icon,
         icon_bg:     form.iconBg,
         category_id: Number(form.categoryId),
@@ -147,6 +152,22 @@ const NewProjectModal = ({ isOpen, onClose, onSubmit, currentUser }) => {
             autoFocus
           />
           {errors.title && <p className={styles.errorMsg}>{errors.title}</p>}
+        </div>
+
+        {/* Location */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="proj-location">
+            Місцезнаходження <span className={styles.required}>*</span>
+          </label>
+          <input
+            id="proj-location"
+            name="location"
+            className={`input ${errors.location ? styles.inputError : ''}`}
+            placeholder="напр. Київ, вул. Хрещатик 1"
+            value={form.location}
+            onChange={handleChange}
+          />
+          {errors.location && <p className={styles.errorMsg}>{errors.location}</p>}
         </div>
 
         {/* Description */}

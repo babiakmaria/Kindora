@@ -50,6 +50,14 @@ export const fetchKeyMetrics = async () => {
   return handleResponse(res);
 };
 
+// GET /api/analytics/volunteer-distribution
+// Returns { total, newVolunteers, permanentMembers, oneTimeParticipants }
+// Volunteers are bucketed with priority: permanent team member > new joiner (today/yesterday) > one-time.
+export const fetchVolunteerDistribution = async () => {
+  const res = await fetch(`${BASE}/analytics/volunteer-distribution`, { headers: headers() });
+  return handleResponse(res);
+};
+
 // GET /api/analytics/report
 // Returns [{ title, status, members, totalHours, totalSpent }, ...]
 export const fetchReport = async () => {

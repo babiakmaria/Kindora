@@ -5,6 +5,13 @@ import Button from '../common/Button';
 import styles from './ProjectCard.module.css';
 import { ProjectIcon } from '../../utils/projectIcon';
 
+const LocationPin = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
 const MemberStack = ({ colors, total }) => (
   <div className={styles.memberStack}>
     {colors.slice(0, 3).map((color, i) => (
@@ -20,7 +27,7 @@ const MemberStack = ({ colors, total }) => (
 
 const ProjectCard = ({ project, view = 'grid', onToggleJoin, onNavigate }) => {
   const isList = view === 'list';
-  const { icon, iconBg, title, desc, status, statusLabel, members, memberColors, progress, due, joined } = project;
+  const { icon, iconBg, title, desc, status, statusLabel, members, memberColors, progress, due, joined, location } = project;
 
   const handleJoin = (e) => {
     e.stopPropagation();
@@ -48,6 +55,12 @@ const ProjectCard = ({ project, view = 'grid', onToggleJoin, onNavigate }) => {
             <span className={styles.metaItem}>{members} учасників</span>
             <span className={styles.categoryTag}>{project.category}</span>
             {joined && <span className={styles.joinedTag}>✓ Приєднано</span>}
+            {location && (
+              <span className={styles.location}>
+                <LocationPin />
+                {location}
+              </span>
+            )}
           </div>
         </div>
 
@@ -88,6 +101,15 @@ const ProjectCard = ({ project, view = 'grid', onToggleJoin, onNavigate }) => {
         </div>
         {joined && <span className={styles.joinedTag}>✓ Приєднано</span>}
       </div>
+
+      {location && (
+        <div className={styles.locationRow}>
+          <span className={styles.location}>
+            <LocationPin />
+            {location}
+          </span>
+        </div>
+      )}
 
       <div style={{ marginTop: 12 }}>
         {joined ? (

@@ -78,50 +78,55 @@ INSERT INTO user_skills (user_id, name, level_pct, color) VALUES
 --  projects
 -- ============================================================
 
-INSERT INTO projects (id, title, description, icon, icon_bg, status, category_id, progress, start_date, end_date, due_date, created_by) VALUES
+INSERT INTO projects (id, title, description, icon, icon_bg, status, category_id, progress, start_date, end_date, due_date, location, created_by) VALUES
 (
     'aaaa0001-0000-0000-0000-000000000001',
     'Чисте місто',
     'Організація прибирань у парках та на вулицях міста. Щотижневі суботники та акції.',
-    '🌱', '#D1FAE5', 'active',
+    'Leaf', '#D1FAE5', 'active',
     (SELECT id FROM project_categories WHERE slug = 'environment'),
     65, '2024-03-01', '2024-12-31', '2024-11-30',
+    'Київ, Гідропарк',
     '11111111-0000-0000-0000-000000000001'
 ),
 (
     'aaaa0002-0000-0000-0000-000000000002',
     'Код для майбутнього',
     'Безкоштовні заняття з програмування для школярів 10–16 років.',
-    '💻', '#EDE9FE', 'in_progress',
+    'BookOpen', '#EDE9FE', 'in_progress',
     (SELECT id FROM project_categories WHERE slug = 'education'),
     40, '2024-02-01', '2024-08-31', '2024-08-01',
+    'Харків, вул. Сумська 42',
     '33333333-0000-0000-0000-000000000003'
 ),
 (
     'aaaa0003-0000-0000-0000-000000000003',
     'Допомога ветеранам',
     'Психологічна та побутова підтримка ветеранів та їх родин.',
-    '🤝', '#FEE2E2', 'active',
+    'Home', '#FEE2E2', 'active',
     (SELECT id FROM project_categories WHERE slug = 'social'),
     30, '2024-01-15', NULL, '2024-12-31',
+    'Київ, вул. Хрещатик 22',
     '11111111-0000-0000-0000-000000000001'
 ),
 (
     'aaaa0004-0000-0000-0000-000000000004',
     'Арт у місті',
     'Розпис громадських просторів та організація виставок просто неба.',
-    '🎨', '#FEF3C7', 'new',
+    'PencilLine', '#FEF3C7', 'new',
     (SELECT id FROM project_categories WHERE slug = 'culture'),
     0, '2024-06-01', '2024-09-30', '2024-09-15',
+    'Львів, пл. Ринок',
     '22222222-0000-0000-0000-000000000002'
 ),
 (
     'aaaa0005-0000-0000-0000-000000000005',
     'Здорова громада',
     'Безкоштовні спортивні заняття та лекції з медицини для мешканців.',
-    '🏃', '#ECFDF5', 'completed',
+    'Recycle', '#ECFDF5', 'completed',
     (SELECT id FROM project_categories WHERE slug = 'health'),
     100, '2023-09-01', '2024-01-31', '2024-01-31',
+    'Одеса, Приморський бульвар',
     '44444444-0000-0000-0000-000000000004'
 );
 

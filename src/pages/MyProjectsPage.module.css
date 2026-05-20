@@ -287,6 +287,13 @@
 }
 .delIcon { color: var(--text3) !important; }
 .delIcon:hover { color: #EF4444 !important; border-color: #EF4444 !important; }
+.location {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text3);
+}
 
 /* ── Delete confirmation overlay (grid) ── */
 .confirmOverlay {

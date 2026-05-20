@@ -4,7 +4,7 @@ import styles from './AuthPage.module.css';
 import { login } from '../api/auth';
 
 const LoginPage = ({ onNavigate, onLogin }) => {
-  const [form, setForm] = useState({ email: '', password: '', remember: false });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,11 +20,7 @@ const LoginPage = ({ onNavigate, onLogin }) => {
     setError('');
     try {
       const data = await login({ email: form.email, password: form.password });
-      if (!form.remember) {
-        // token is stored in localStorage by App; nothing extra needed
-      }
       onLogin(data);
-      onNavigate('projects');
     } catch (err) {
       setError(err.message || 'Невідома помилка. Спробуйте ще раз.');
     } finally {
@@ -78,20 +74,6 @@ const LoginPage = ({ onNavigate, onLogin }) => {
               {error}
             </p>
           )}
-
-          <div className={styles.checkRow}>
-            <input
-              type="checkbox"
-              id="remember"
-              name="remember"
-              checked={form.remember}
-              onChange={handleChange}
-              style={{ accentColor: 'var(--pk1)' }}
-            />
-            <label htmlFor="remember" style={{ fontSize: 13, color: 'var(--text2)' }}>
-              Запам'ятати мене на 30 днів
-            </label>
-          </div>
 
           <Button
             type="submit"

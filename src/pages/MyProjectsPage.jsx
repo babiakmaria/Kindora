@@ -78,6 +78,15 @@ const ProjectItem = ({ project, view, onDelete, onOpen, isAdmin = false, isOwner
             <span className={styles.metaItem}>{project.due}</span>
             <MemberStack colors={project.memberColors} total={project.members} />
             <span className={styles.categoryTag}>{project.category}</span>
+            {project.location && (
+              <span className={styles.location}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                {project.location}
+              </span>
+            )}
           </div>
         </div>
 
@@ -187,6 +196,15 @@ const ProjectItem = ({ project, view, onDelete, onOpen, isAdmin = false, isOwner
             </>
           )}
         </div>
+        {project.location && (
+          <span className={styles.location}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            {project.location}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -211,6 +229,7 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, curr
   const [sort,         setSort]        = useState('newest');
   const [view,         setView]        = useState('grid');
   const [modalOpen,    setModalOpen]   = useState(false);
+  const [visibleCount, setVisibleCount] = useState(12);
 
   const handleDelete = (id) =>
     setDeletedIds((prev) => new Set([...prev, id]));
@@ -241,6 +260,10 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, curr
       });
   }, [myProjects, query, roleFilter, statusFilter, sort]);
 
+  // Reset to first page whenever filters or sort change
+  useEffect(() => { setVisibleCount(12); }, [query, roleFilter, statusFilter, sort]);
+
+  const visible     = filtered.slice(0, visibleCount);
   const hasProjects = myProjects.length > 0;
   const hasResults  = filtered.length  > 0;
 
@@ -366,7 +389,7 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, curr
           {/* ── Results meta ── */}
           {hasResults && (
             <div className={styles.resultsMeta}>
-              Показано {filtered.length} з {totalCount} проєктів
+              Показано {visible.length} з {filtered.length} проєктів
             </div>
           )}
 
@@ -405,19 +428,33 @@ const MyProjectsPage = ({ onNavigate, projects: projectsProp, onAddProject, curr
               </button>
             </div>
           ) : (
-            <div className={view === 'grid' ? styles.grid : styles.list}>
-              {filtered.map((p) => (
-                <ProjectItem
-                  key={p.id}
-                  project={p}
-                  view={view}
-                  onDelete={handleDelete}
-                  onOpen={() => onNavigate('project-detail', p)}
-                  isAdmin={isAdmin}
-                  isOwner={p.createdBy === currentUser?.id}
-                />
-              ))}
-            </div>
+            <>
+              <div className={view === 'grid' ? styles.grid : styles.list}>
+                {visible.map((p) => (
+                  <ProjectItem
+                    key={p.id}
+                    project={p}
+                    view={view}
+                    onDelete={handleDelete}
+                    onOpen={() => onNavigate('project-detail', p)}
+                    isAdmin={isAdmin}
+                    isOwner={p.createdBy === currentUser?.id}
+                  />
+                ))}
+              </div>
+
+              {visibleCount < filtered.length && (
+                <div style={{ textAlign: 'center', marginTop: 24 }}>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ padding: '10px 28px' }}
+                    onClick={() => setVisibleCount((c) => c + 12)}
+                  >
+                    Завантажити більше проєктів
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
         </div>

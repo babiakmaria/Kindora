@@ -28,7 +28,7 @@ export const register = async ({ firstName, lastName, email, password, role }) =
       last_name:   lastName,
       email,
       password,
-      system_role: role === 'admin' ? 'admin' : 'volunteer',
+      system_role: role,
     }),
   });
   return handleResponse(res); // { token, user }

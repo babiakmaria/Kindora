@@ -33,7 +33,7 @@ const getDisplayName = (user) => {
 
 const getRoleLabel = (user) => {
   if (!user) return '';
-  return user.system_role === 'admin' ? 'Адміністратор' : 'Учасник';
+  return user.system_role === 'admin' ? 'Адміністратор' : 'Волонтер';
 };
 
 const Sidebar = ({ activePage, onNavigate, searchable = false, onSearch, currentUser, onLogout }) => {

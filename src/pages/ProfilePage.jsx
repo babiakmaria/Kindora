@@ -4,13 +4,19 @@ import Badge    from '../components/common/Badge';
 import Button   from '../components/common/Button';
 import styles   from './ProfilePage.module.css';
 import { ProjectIcon } from '../utils/projectIcon';
-import { updateProfile, fetchUserProjects, fetchUserTeam, addTeamMember, removeTeamMember } from '../api/users';
+import { updateProfile, fetchUserProjects, fetchUserTeam, fetchUserActivity, addTeamMember, removeTeamMember } from '../api/users';
 import { searchUsers } from '../api/tasks';
 
 const BIO_MAX = 400;
 
-const MONTHS = ['Жовт', 'Листоп', 'Груд', 'Січ', 'Лют', 'Бер'];
-const BARS   = [40, 55, 70, 50, 80, 100];
+// Build a 6-month label array ending at the current month
+const buildMonthLabels = () => {
+  const now = new Date();
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    return { year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('uk-UA', { month: 'short' }) };
+  });
+};
 
 // ── Helpers ──────────────────────────────────────────────────
 const getInitials = (u) => {
@@ -64,8 +70,9 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
   const [feedback, setFeedback] = useState(null); // { type, msg }
 
   // Remote data
-  const [userProjects, setUserProjects] = useState([]);
-  const [dataLoading,  setDataLoading]  = useState(true);
+  const [userProjects,  setUserProjects]  = useState([]);
+  const [activityLogs,  setActivityLogs]  = useState([]);
+  const [dataLoading,   setDataLoading]   = useState(true);
 
   // Team state — persisted in the DB via /api/users/me/team
   const [team,              setTeam]              = useState([]);
@@ -77,15 +84,24 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
 
   const firstNameRef = useRef(null);
 
-  // ── Fetch projects + team for this user ───────────────────
+  // ── Fetch projects, team and 6-month activity logs ────────
   useEffect(() => {
     if (!currentUser?.id) return;
     setDataLoading(true);
+
+    // date range: start of the month 5 months ago → today
+    const now    = new Date();
+    const from   = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const dateFrom = from.toISOString().slice(0, 10);
+    const dateTo   = now.toISOString().slice(0, 10);
+
     Promise.all([
       fetchUserProjects(currentUser.id).catch(() => []),
       fetchUserTeam(currentUser.id).catch(() => []),
-    ]).then(([pr, tm]) => {
+      fetchUserActivity(currentUser.id, dateFrom, dateTo).catch(() => []),
+    ]).then(([pr, tm, logs]) => {
       setUserProjects(pr);
+      setActivityLogs(logs);
       setTeam(tm.map((m) => ({
         id:       m.id,
         name:     `${m.first_name || ''} ${m.last_name || ''}`.trim(),
@@ -157,8 +173,55 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
   const totalProjects = dataLoading
     ? Number(currentUser?.active_projects_count) || 0
     : userProjects.length;
-  const totalHours    = Number(currentUser?.total_logged_hours) || 0;
-  const totalTasks    = Number(currentUser?.total_tasks)        || 0;
+  const totalHours = dataLoading
+    ? Number(currentUser?.total_hours) || 0
+    : userProjects.reduce((sum, p) => sum + (Number(p.hours_contributed) || 0), 0);
+  const totalTasks = dataLoading
+    ? Number(currentUser?.total_tasks) || 0
+    : userProjects.reduce((sum, p) => sum + (Number(p.tasks_completed) || 0), 0);
+
+  // Monthly chart data:
+  //   Primary source: activity_logs (actual per-day work diary)
+  //   Fallback when activity_logs is empty: attribute each project's hours_contributed
+  //   and presence to the month it was joined (joined_at from project_members).
+  const monthlyData = useMemo(() => {
+    const slots = buildMonthLabels();
+    const useActivityLogs = activityLogs.length > 0;
+
+    return slots.map(({ year, month, label }) => {
+      let hours    = 0;
+      let projects = 0;
+
+      if (useActivityLogs) {
+        // ── Primary path: real activity_logs entries ──────────────
+        const monthLogs = activityLogs.filter((log) => {
+          const d = log.log_date ? new Date(log.log_date) : null;
+          return d && d.getFullYear() === year && d.getMonth() === month;
+        });
+        hours    = monthLogs.reduce((sum, l) => sum + (Number(l.hours_logged) || 0), 0);
+        projects = new Set(monthLogs.map((l) => l.project_id)).size;
+      } else {
+        // ── Fallback path: attribute by joined_at month ───────────
+        const nowObj = new Date();
+        const isCurrent = year === nowObj.getFullYear() && month === nowObj.getMonth();
+
+        userProjects.forEach((p) => {
+          const joinedDate = p.joined_at ? new Date(p.joined_at) : null;
+          // Match this month OR put everything in current month if no joined_at
+          const inMonth = joinedDate
+            ? (joinedDate.getFullYear() === year && joinedDate.getMonth() === month)
+            : isCurrent;
+
+          if (inMonth) {
+            hours    += Number(p.hours_contributed) || 0;
+            projects += 1;
+          }
+        });
+      }
+
+      return { label, hours, projects };
+    });
+  }, [activityLogs, userProjects]);
 
   const hasChanges =
     draft.first_name !== (currentUser?.first_name || '') ||
@@ -534,21 +597,51 @@ const ProfilePage = ({ onNavigate, currentUser, onLogout, onUserUpdate }) => {
               )}
             </div>
 
-            {/* Monthly activity — kept as decorative until activity API is wired */}
+            {/* Monthly activity — 2 bars per month: hours (pink) + projects (green) */}
             <div className="section-card">
-              <div className="section-head"><div className="section-title">Місячна активність</div></div>
-              <div className={styles.chartRow}>
-                {BARS.map((h, i) => (
-                  <div
-                    key={i}
-                    className={styles.bar}
-                    style={{ height: `${h}%`, background: h === 100 ? 'var(--gr1)' : h >= 70 ? 'var(--pk2)' : 'var(--pk3)' }}
-                  />
-                ))}
+              <div className="section-head">
+                <div className="section-title">Місячна активність</div>
+                <div className={styles.chartLegend}>
+                  <span className={styles.legendDot} style={{ background: 'var(--pk1)' }} />
+                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>Години</span>
+                  <span className={styles.legendDot} style={{ background: 'var(--gr1)', marginLeft: 8 }} />
+                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>Проєкти</span>
+                </div>
               </div>
-              <div className={styles.chartLabels}>
-                {MONTHS.map((m) => <span key={m}>{m}</span>)}
-              </div>
+              {(() => {
+                const CHART_H = 80;
+                const maxH = Math.max(...monthlyData.map((m) => m.hours),   1);
+                const maxP = Math.max(...monthlyData.map((m) => m.projects), 1);
+                return (
+                  <>
+                    <div className={styles.chartRow}>
+                      {monthlyData.map((m, i) => (
+                        <div key={i} className={styles.barGroup}>
+                          <div
+                            className={styles.bar}
+                            style={{
+                              height: m.hours > 0 ? Math.max((m.hours / maxH) * CHART_H, 6) : 0,
+                              background: 'var(--pk1)',
+                            }}
+                            title={`${m.hours}г`}
+                          />
+                          <div
+                            className={styles.bar}
+                            style={{
+                              height: m.projects > 0 ? Math.max((m.projects / maxP) * CHART_H, 6) : 0,
+                              background: 'var(--gr1)',
+                            }}
+                            title={`${m.projects} проєктів`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className={styles.chartLabels}>
+                      {monthlyData.map((m) => <span key={m.label}>{m.label}</span>)}
+                    </div>
+                  </>
+                );
+              })()}
               <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
                 <div className={styles.miniStat} style={{ background: 'var(--pk3)' }}>
                   <div style={{ color: 'var(--pk1)', fontWeight: 800, fontSize: 16 }}>{totalHours}г</div>

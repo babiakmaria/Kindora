@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import ProjectCard from '../components/projects/ProjectCard';
 import Button from '../components/common/Button';
@@ -59,6 +59,7 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
   const [sort,        setSort]       = useState('default');
   const [view,        setView]       = useState('grid');
   const [isModalOpen, setModalOpen]  = useState(false);
+  const [visibleCount, setVisibleCount] = useState(12);
 
   // onAddProject from App.jsx handles the API call and shared state update
 
@@ -82,6 +83,11 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
         return 0;
       });
   }, [projects, query, filter, sort]);
+
+  // Reset to first page whenever filter, sort, or search changes
+  useEffect(() => { setVisibleCount(12); }, [query, filter, sort]);
+
+  const visible = filtered.slice(0, visibleCount);
 
   return (
     <div className="app-layout">
@@ -161,7 +167,7 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
           <p className={styles.resultsMeta}>
             Показано{' '}
             <strong style={{ color: 'var(--text2)' }}>
-              {filtered.length} {filtered.length === 1 ? 'проєкт' : filtered.length < 5 ? 'проєкти' : 'проєктів'}
+              {visible.length} з {filtered.length} {filtered.length === 1 ? 'проєкту' : 'проєктів'}
             </strong>
             {query && ` для "${query}"`}
           </p>
@@ -180,7 +186,7 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
             </div>
           ) : (
             <div className={view === 'grid' ? styles.projGrid : styles.projList}>
-              {filtered.map((p) => (
+              {visible.map((p) => (
                 <ProjectCard
                   key={p.id}
                   project={p}
@@ -192,9 +198,13 @@ const ProjectsListPage = ({ onNavigate, projects: projectsProp, onAddProject, on
             </div>
           )}
 
-          {filtered.length > 0 && (
+          {visibleCount < filtered.length && (
             <div style={{ textAlign: 'center', marginTop: 24 }}>
-              <Button variant="ghost" style={{ padding: '10px 28px' }}>
+              <Button
+                variant="ghost"
+                style={{ padding: '10px 28px' }}
+                onClick={() => setVisibleCount((c) => c + 12)}
+              >
                 Завантажити більше проєктів
               </Button>
             </div>

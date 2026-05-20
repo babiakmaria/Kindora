@@ -107,8 +107,8 @@ const mapMember = (m) => ({
 
 // Sub-components
 
-// Contributor avatar with tooltip
-const ContribAvatar = ({ contributor, size = 36, onNavigate }) => {
+// Contributor avatar with tooltip and optional admin remove button
+const ContribAvatar = ({ contributor, size = 36, onNavigate, onRemove }) => {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -133,6 +133,17 @@ const ContribAvatar = ({ contributor, size = 36, onNavigate }) => {
       >
         {contributor.initials}
       </div>
+
+      {/* Admin-only remove badge — shown on hover */}
+      {onRemove && hovered && (
+        <button
+          className={styles.contribRemoveBtn}
+          onClick={(e) => { e.stopPropagation(); onRemove(contributor); }}
+          title={`Видалити ${contributor.name} з проєкту`}
+          aria-label={`Видалити ${contributor.name} з проєкту`}
+        >×</button>
+      )}
+
       {hovered && (
         <div className={styles.tooltip}>
           <div className={styles.tooltipName}>{contributor.name}</div>
@@ -480,8 +491,11 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
       .finally(() => setCalendarLoading(false));
   }, [projectId, year, month]);
 
-  // Tags state — seeded from the project object so they survive navigation
-  const [tags,         setTags]         = useState(() => proj.tags?.length ? proj.tags : []);
+  // Tags state — seeded from the project object so they survive navigation.
+  // API returns tag objects {id, name, color}; normalize to plain name strings.
+  const [tags,         setTags]         = useState(() =>
+    (proj.tags ?? []).map((t) => (typeof t === 'string' ? t : t.name))
+  );
   const [tagPopupOpen, setTagPopupOpen] = useState(false);
   const tagPopupRef = useRef(null);
   const tagAddBtnRef = useRef(null);
@@ -626,6 +640,7 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
       t.id === id ? { ...t, done: true, loggedHours: hoursToLog, ...(priceToLog !== null ? { price: priceToLog } : {}) } : t
     ));
     setCompletingTask(null);
+
 
     if (!projectId) return;
 
@@ -783,7 +798,7 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
                 <div>
                   <div className={styles.projectTitleRow}>
                     <div className={styles.projectTitle}>{proj.title}</div>
-                    {isOwner && (
+                    {isAdmin && isOwner && (
                       <button
                         className={styles.deleteBtn}
                         onClick={() => setShowDeleteConfirm(true)}
@@ -859,7 +874,13 @@ const ProjectDetailPage = ({ onNavigate, project, fromPage, currentUser, onLogou
               <div className={styles.contribLabel}>Учасники</div>
               <div className={styles.contribRow}>
                 {members.map((c) => (
-                  <ContribAvatar key={c.id} contributor={c} size={38} onNavigate={onNavigate} />
+                  <ContribAvatar
+                    key={c.id}
+                    contributor={c}
+                    size={38}
+                    onNavigate={onNavigate}
+                    onRemove={isAdmin ? toggleMember : undefined}
+                  />
                 ))}
                 {isOwner && (
                   <button

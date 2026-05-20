@@ -18,7 +18,7 @@ const getStrength = (pw) => {
 const RegisterPage = ({ onNavigate, onLogin }) => {
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', password: '',
-    role: 'member',
+    role: 'volunteer',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -107,7 +107,7 @@ const RegisterPage = ({ onNavigate, onLogin }) => {
             <label className="input-label">Я приєднуюсь як</label>
             <div className={styles.roleRow}>
               {[
-                { value: 'member', label: 'Учасник спільноти' },
+                { value: 'volunteer', label: 'Волонтер' },
                 { value: 'admin',  label: 'Адміністратор' },
               ].map((opt) => (
                 <div

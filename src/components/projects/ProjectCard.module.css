@@ -105,6 +105,19 @@
   margin-left: 6px;
 }
 
+.locationRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.location {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text3);
+}
+
 /* ── List card ── */
 .listCard {
   flex-direction: row;

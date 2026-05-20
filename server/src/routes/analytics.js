@@ -266,6 +266,86 @@ async function analyticsRoutes(fastify) {
 
     return rows
   })
+
+  // GET /api/analytics/volunteer-distribution
+  // Categorizes each unique volunteer across the admin's non-archived projects
+  // into exactly one bucket using priority: permanent team member > new joiner > one-time.
+  // Returns { total, newVolunteers, permanentMembers, oneTimeParticipants }.
+  fastify.get('/volunteer-distribution', { onRequest: [fastify.authenticate] }, async (req) => {
+    const adminId = req.user.id
+
+    const { rows } = await db.query(
+      `WITH team AS (
+         SELECT member_id AS user_id
+         FROM   team_members
+         WHERE  owner_id = $1
+       ),
+       project_volunteers AS (
+         SELECT pm.user_id, MIN(pm.joined_at) AS first_joined
+         FROM   project_members pm
+         JOIN   projects        p  ON p.id = pm.project_id
+         WHERE  p.created_by = $1
+           AND  p.status     != 'archived'
+           AND  pm.is_active  = TRUE
+         GROUP  BY pm.user_id
+       ),
+       all_users AS (
+         SELECT user_id FROM team
+         UNION
+         SELECT user_id FROM project_volunteers
+       ),
+       project_counts AS (
+         SELECT pm.user_id, COUNT(DISTINCT pm.project_id) AS project_count
+         FROM   project_members pm
+         JOIN   projects        p  ON p.id = pm.project_id
+         WHERE  p.created_by = $1
+           AND  p.status     != 'archived'
+           AND  pm.is_active  = TRUE
+         GROUP  BY pm.user_id
+       ),
+       task_counts AS (
+         SELECT t.assignee_id AS user_id, COUNT(*) AS done_tasks
+         FROM   tasks    t
+         JOIN   projects p  ON p.id = t.project_id
+         WHERE  p.created_by  = $1
+           AND  p.status      != 'archived'
+           AND  t.is_done      = TRUE
+           AND  t.assignee_id IS NOT NULL
+         GROUP  BY t.assignee_id
+       ),
+       categorized AS (
+         SELECT
+           au.user_id,
+           CASE
+             WHEN t.user_id      IS NOT NULL                    THEN 'permanent'
+             WHEN pv.first_joined >= NOW() - INTERVAL '2 days'  THEN 'new'
+             WHEN COALESCE(pc.project_count, 0) = 1
+              AND COALESCE(tc.done_tasks,    0) = 1             THEN 'one_time'
+             ELSE 'other'
+           END AS category
+         FROM   all_users          au
+         LEFT   JOIN team              t  ON t.user_id  = au.user_id
+         LEFT   JOIN project_volunteers pv ON pv.user_id = au.user_id
+         LEFT   JOIN project_counts    pc ON pc.user_id  = au.user_id
+         LEFT   JOIN task_counts       tc ON tc.user_id  = au.user_id
+       )
+       SELECT
+         COUNT(*)::int                                          AS total,
+         COUNT(*) FILTER (WHERE category = 'new')::int         AS new_volunteers,
+         COUNT(*) FILTER (WHERE category = 'permanent')::int   AS permanent_members,
+         COUNT(*) FILTER (WHERE category = 'one_time')::int    AS one_time_participants
+       FROM categorized`,
+      [adminId],
+    )
+
+    const row = rows[0]
+    return {
+      total:                Number(row.total),
+      newVolunteers:        Number(row.new_volunteers),
+      permanentMembers:     Number(row.permanent_members),
+      oneTimeParticipants:  Number(row.one_time_participants),
+    }
+  })
 }
 
 module.exports = analyticsRoutes

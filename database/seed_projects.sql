@@ -59,10 +59,25 @@ DECLARE
 
 BEGIN
 
-  -- ── Знайти адміна ────────────────────────────────────────
-  SELECT id INTO admin_id FROM users ORDER BY joined_at LIMIT 1;
+  -- ── Очистити попередній запуск (якщо є) ─────────────────
+  -- Старі тестові дані (11111111- з оригінального seed.sql)
+  DELETE FROM projects WHERE created_by::text LIKE '11111111-%';
+  DELETE FROM users    WHERE id::text         LIKE '11111111-%';
+  -- Дані поточного сіду (cccc0001- / bbbb0001-)
+  DELETE FROM projects WHERE id::text LIKE 'cccc0001-%';
+  DELETE FROM users    WHERE id::text LIKE 'bbbb0001-%';
+
+  -- ── Знайти адміна (реальний зареєстрований користувач) ───
+  -- Виключаємо UUID тестових сідів щоб завжди брати справжнього юзера.
+  SELECT id INTO admin_id
+  FROM   users
+  WHERE  id::text NOT LIKE '11111111-%'
+    AND  id::text NOT LIKE 'bbbb0001-%'
+  ORDER  BY joined_at
+  LIMIT  1;
+
   IF admin_id IS NULL THEN
-    RAISE EXCEPTION 'Не знайдено жодного користувача. Зареєструйтесь спочатку.';
+    RAISE EXCEPTION 'Не знайдено жодного зареєстрованого користувача. Зареєструйтесь спочатку.';
   END IF;
 
   -- ── Категорії ────────────────────────────────────────────

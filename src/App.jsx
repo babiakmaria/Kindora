@@ -49,6 +49,7 @@ function App() {
   const [projects,      setProjects]      = useState(PROJECTS);
   const [projectsReady, setProjectsReady] = useState(false);
 
+
   // ── Restore session on mount ───────────────────────────
   useEffect(() => {
     const token = localStorage.getItem('kindora_token');
@@ -80,6 +81,12 @@ function App() {
   const handleLogin = ({ token, user }) => {
     localStorage.setItem('kindora_token', token);
     setCurrentUser(user);
+    // Login response lacks user_stats fields (total_hours, total_tasks, etc.)
+    // Fetch the full stats row immediately so the profile page has correct data.
+    getMe().then(setCurrentUser).catch(() => {});
+    // Navigate directly here so we don't race against the currentUser state update.
+    // If onNavigate were called from LoginPage it would still see currentUser as null.
+    setPage('projects');
   };
 
   const handleUserUpdate = (updatedFields) => {
@@ -106,6 +113,11 @@ function App() {
     }
     if (target === 'user-profile' && payload) {
       setSelectedUser(payload);
+    }
+    // Refresh currentUser stats whenever the user opens their profile page
+    // so that total_tasks / total_hours reflect any changes made since login.
+    if (target === 'profile') {
+      getMe().then(setCurrentUser).catch(() => {});
     }
     if (PAGES[target]) setPage(target);
   };
